@@ -28,9 +28,10 @@ Tickets are labelled `lane:no-ssh` (Lane A — actionable now) or `lane:ssh-gate
 | #6 [T-005] | Persona menu grilling session | grilling | — |
 | #7 [T-006] | LLM tier routing + provider YAML | research | — |
 | #9 [T-008] | Memory backend research | research | — |
-| #11 [T-010] | Wiki + librarian-surface architecture research | research | — |
 | #12 [T-011] | Repo list for the wiki | task | — |
 | #18 [T-017] | Sample internal-wiki/ for prior art | research | — |
+
+> T-010 (#11) was **closed as not-planned per D-010** — wiki architecture research is deferred until core functionality lands. T-011 (repo list) remains useful for re-ticketing wiki work later.
 
 ### Lane B (SSH-gated — sequenced for end-of-chart, behind T-001)
 
@@ -51,9 +52,10 @@ Tickets are labelled `lane:no-ssh` (Lane A — actionable now) or `lane:ssh-gate
 
 **Workflow:**
 
-1. Run **all of Lane A** in parallel using Codex (research tickets) and the user (T-005, T-011).
+1. Run **all of Lane A** in parallel using Codex/agent tools (research tickets) and the user (T-005, T-011).
 2. When Lane A is exhausted or sufficiently progressed, the user runs **T-001** (key rotation) by hand.
 3. With T-001 closed, T-002 and T-018 unlock, and Lane B proceeds in dependency order.
+4. **Wiki work (T-010 and downstream T-012/T-013/T-014/T-015/T-016) is deferred (D-010)** — re-ticket when core functionality is functional end-to-end.
 
 Final frontier query:
 
