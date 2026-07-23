@@ -23,7 +23,7 @@ A **production-grade Hermes Agent (v0.15.1 already installed)** at `129.150.37.1
 | Shell wrapping | `/usr/local/bin/hermes` shim → Docker container |
 | Tailscale users | `noahklw119@` (this Linux); offline: `noahpc`, `node` (mac), `noahs-macbook-air` (this Mac, now online) |
 
-## Decisions so far (D-001..D-016)
+## Decisions so far (D-001..D-017)
 
 Pulled verbatim from map #27.
 
@@ -59,6 +59,8 @@ Pulled verbatim from map #27.
 
 - **D-016** — **Leaked SSH RSA key accepted as-is** (security debt). User explicitly chose option (b) in the access plan; T-NEW-09 (re-rotation) is the load-bearing remediation ticket.
 
+- **D-017** — **Provider is MiniMax-only**. No OpenRouter, no Codex fallback, no DeepSeek direct. T-NEW-01 (#37) closed as resolved per user directive. The 5-step setup plan's Step 1 fallback chain is superseded; only the MiniMax provider block + env var survive.
+
 
 ## T-NEW-03 (#29) Memory architecture
 
@@ -90,20 +92,19 @@ T-NEW-08 (#34): monthly cron `~/.hermes/scripts/monthly-research.sh` — first r
 
 ## Open tickets (current state)
 
-11 tickets open on the v2 chart:
+10 tickets open on the v2 chart:
 
 | # | ID | Type | Lane | Title |
 |---|---|---|---|---|
-| #28 | T-NEW-01 | task | ssh-gated | [02] Ship the user's 5-step hermes-setup-plan.md t |
-| #29 | T-NEW-02 | grilling | ssh-gated | [03] Audit / consolidate Qdrant + mem0 + agentmemo |
-| #30 | T-NEW-03 | grilling | ssh-gated | [04] Persona menu — SOUL.md + default/coder profil |
-| #31 | T-NEW-04 | task | ssh-gated | [05] Token-cost ledger derived from kanban.db + Ho |
-| #32 | T-NEW-05 | task | ssh-gated | [06] hermes-status heartbeat + Tailscale on remain |
-| #33 | T-NEW-06 | task | ssh-gated | [07] Wiki + librarian MCP chain (parked per D-010) |
-| #34 | T-NEW-07 | task | no-ssh | [08] Monthly improvement recommender (realized as  |
-| #35 | T-NEW-08 | task | no-ssh | [09] GRANDMAP.md v2 recompile (T-024 successor) |
-| #36 | T-NEW-09 | task | ssh-gated | [10] Rotate leaked RSA SSH key — security debt |
-| #37 | T-NEW-10 | task | ssh-gated | [01] Verify provider/delegation against hermes-set |
+| #28 | T-NEW-02 | task | ssh-gated | [02] Ship the user's 5-step hermes-setup-plan.md t |
+| #29 | T-NEW-03 | grilling | ssh-gated | [03] Audit / consolidate Qdrant + mem0 + agentmemo |
+| #30 | T-NEW-04 | grilling | ssh-gated | [04] Persona menu — SOUL.md + default/coder profil |
+| #31 | T-NEW-05 | task | ssh-gated | [05] Token-cost ledger derived from kanban.db + Ho |
+| #32 | T-NEW-06 | task | ssh-gated | [06] hermes-status heartbeat + Tailscale on remain |
+| #33 | T-NEW-07 | task | ssh-gated | [07] Wiki + librarian MCP chain (parked per D-010) |
+| #34 | T-NEW-08 | task | no-ssh | [08] Monthly improvement recommender (realized as  |
+| #35 | T-NEW-09 | task | no-ssh | [09] GRANDMAP.md v2 recompile (T-024 successor) |
+| #36 | T-NEW-10 | task | ssh-gated | [10] Rotate leaked RSA SSH key — security debt |
 
 
 ## Closed tickets (parked / superseded)
@@ -112,6 +113,7 @@ T-NEW-08 (#34): monthly cron `~/.hermes/scripts/monthly-research.sh` — first r
 |---|---|---|
 | #1 | archive:v1-map | v1 chart superseded |
 | #2-#26 | superseded | v1 tickets re-ticketed at #28-#37 |
+| #37 | closed | T-NEW-01 — MiniMax-only provider decision (closed as resolved per D-017) |
 
 
 ## Out of scope
