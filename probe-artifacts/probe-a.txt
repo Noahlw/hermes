@@ -1,0 +1,117 @@
+=== Probe run: 2026-07-23T04:27:39Z ===
+--- identity ---
+root
+Linux instance-20260511-1727 6.17.0-1011-oracle #11~24.04.1-Ubuntu SMP Fri Apr 10 02:09:09 UTC 2026 aarch64 aarch64 aarch64 GNU/Linux
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.4 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+--- resources ---
+4
+               total        used        free      shared  buff/cache   available
+Mem:            23Gi       4.1Gi        10Gi        31Mi       9.6Gi        19Gi
+Swap:             0B          0B          0B
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       193G   89G  105G  46% /
+/dev/sda1       193G   89G  105G  46% /
+--- /opt tree (depth 3, dirs) ---
+/opt
+/opt/unified-monitoring-agent
+/opt/unified-monitoring-agent/.package_util
+/opt/unified-monitoring-agent/.package_util/package-scripts
+/opt/unified-monitoring-agent/usr
+/opt/unified-monitoring-agent/usr/sbin
+/opt/unified-monitoring-agent/etc
+/opt/unified-monitoring-agent/etc/prelink.conf.d
+/opt/unified-monitoring-agent/etc/unified-monitoring-agent
+/opt/unified-monitoring-agent/etc/init.d
+/opt/unified-monitoring-agent/etc/systemd
+/opt/unified-monitoring-agent/embedded
+/opt/unified-monitoring-agent/embedded/share
+/opt/unified-monitoring-agent/embedded/bin
+/opt/unified-monitoring-agent/embedded/lib
+/opt/containerd
+/opt/containerd/bin
+/opt/containerd/lib
+--- /opt tree (depth 4, files only) ---
+/opt/unified-monitoring-agent/version-manifest.txt
+/opt/unified-monitoring-agent/LICENSE
+/opt/unified-monitoring-agent/.package_util/package-scripts/prerm
+/opt/unified-monitoring-agent/.package_util/package-scripts/postrm
+/opt/unified-monitoring-agent/.package_util/package-scripts/postinst
+/opt/unified-monitoring-agent/.package_util/package-scripts/preinst
+/opt/unified-monitoring-agent/usr/sbin/unified-monitoring-agent
+/opt/unified-monitoring-agent/usr/sbin/unified-monitoring-agent-gem
+/opt/unified-monitoring-agent/etc/prelink.conf.d/unified-monitoring-agent_prelink.conf
+/opt/unified-monitoring-agent/etc/unified-monitoring-agent/unified-monitoring-agent.conf
+/opt/unified-monitoring-agent/etc/unified-monitoring-agent/unified-monitoring-agent_doctor.sh
+/opt/unified-monitoring-agent/etc/unified-monitoring-agent/unified-monitoring-agent_troubleshoot.sh
+/opt/unified-monitoring-agent/etc/init.d/unified-monitoring-agent
+/opt/unified-monitoring-agent/etc/systemd/unified-monitoring-agent_restarter.path
+/opt/unified-monitoring-agent/etc/systemd/unified-monitoring-agent_config_downloader.timer
+/opt/unified-monitoring-agent/etc/systemd/unified-monitoring-agent_restarter.service
+/opt/unified-monitoring-agent/etc/systemd/unified-monitoring-agent_config_downloader.service
+/opt/unified-monitoring-agent/etc/systemd/unified-monitoring-agent.service
+/opt/unified-monitoring-agent/THIRD_PARTY_LICENSES.txt
+/opt/unified-monitoring-agent/embedded/bin/fluent-binlog-reader
+/opt/unified-monitoring-agent/embedded/bin/toe
+/opt/unified-monitoring-agent/embedded/bin/jsonpath
+/opt/unified-monitoring-agent/embedded/bin/fluent-ctl
+/opt/unified-monitoring-agent/embedded/bin/fluent-plugin-config-format
+/opt/unified-monitoring-agent/embedded/bin/jeprof
+/opt/unified-monitoring-agent/embedded/bin/fluent-cap-ctl
+/opt/unified-monitoring-agent/embedded/bin/tabs
+/opt/unified-monitoring-agent/embedded/bin/typeprof
+/opt/unified-monitoring-agent/embedded/bin/fluentd
+/opt/unified-monitoring-agent/embedded/bin/test-unit
+/opt/unified-monitoring-agent/embedded/bin/erb
+/opt/unified-monitoring-agent/embedded/bin/racc
+/opt/unified-monitoring-agent/embedded/bin/ruby
+/opt/unified-monitoring-agent/embedded/bin/tic
+/opt/unified-monitoring-agent/embedded/bin/restclient
+/opt/unified-monitoring-agent/embedded/bin/fluent-gem
+/opt/unified-monitoring-agent/embedded/bin/cc-tddium-post-worker
+/opt/unified-monitoring-agent/embedded/bin/fluent-ca-generate
+/opt/unified-monitoring-agent/embedded/bin/ruby-parse
+/opt/unified-monitoring-agent/embedded/bin/fluent-plugin-generate
+/opt/unified-monitoring-agent/embedded/bin/tset
+/opt/unified-monitoring-agent/embedded/bin/ncurses6-config
+/opt/unified-monitoring-agent/embedded/bin/fluent-cat
+/opt/unified-monitoring-agent/embedded/bin/bundle
+/opt/unified-monitoring-agent/embedded/bin/ri
+/opt/unified-monitoring-agent/embedded/bin/rdoc
+/opt/unified-monitoring-agent/embedded/bin/tput
+/opt/unified-monitoring-agent/embedded/bin/fluent-debug
+/opt/unified-monitoring-agent/embedded/bin/rbs
+/opt/unified-monitoring-agent/embedded/bin/ncursesw6-config
+/opt/unified-monitoring-agent/embedded/bin/jemalloc.sh
+/opt/unified-monitoring-agent/embedded/bin/irb
+/opt/unified-monitoring-agent/embedded/bin/ruby-rewrite
+/opt/unified-monitoring-agent/embedded/bin/rubocop
+/opt/unified-monitoring-agent/embedded/bin/clear
+/opt/unified-monitoring-agent/embedded/bin/gem
+/opt/unified-monitoring-agent/embedded/bin/infocmp
+/opt/unified-monitoring-agent/embedded/bin/rdbg
+/opt/unified-monitoring-agent/embedded/bin/rake
+/opt/unified-monitoring-agent/embedded/bin/syntax_suggest
+/opt/unified-monitoring-agent/embedded/bin/bundler
+/opt/unified-monitoring-agent/embedded/lib/libyaml-0.so.2.0.9
+/opt/unified-monitoring-agent/embedded/lib/libncurses.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libtinfo.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libmenu.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libruby.so.3.3.11
+/opt/unified-monitoring-agent/embedded/lib/libjemalloc.so.2
+/opt/unified-monitoring-agent/embedded/lib/libiconv.so.2.7.0
+/opt/unified-monitoring-agent/embedded/lib/libpanelw.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libmenuw.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libffi.so.8.2.0
+/opt/unified-monitoring-agent/embedded/lib/libpanel.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libtinfow.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libedit.so.0.0.72
+/opt/unified-monitoring-agent/embedded/lib/libformw.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libncursesw.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libform.so.6.4
+/opt/unified-monitoring-agent/embedded/lib/libz.so.1.3.1
+/opt/unified-monitoring-agent/version-manifest.json
+--- ~/.hermes ---

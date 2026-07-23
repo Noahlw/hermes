@@ -1,0 +1,170 @@
+--- ~/.hermes/hermes-agent top level ---
+total 3224
+-rw-rw-r--  1 ubuntu ubuntu      0 Jun 15 04:29 k«€d°d°d
+drwxrwxr-x 36 ubuntu ubuntu   4096 Jun 16 02:31 .
+drwx------ 28 ubuntu ubuntu   4096 Jul 23 04:30 ..
+-rw-rw-r--  1 ubuntu ubuntu    712 May 29 08:03 .dockerignore
+-rw-rw-r--  1 ubuntu ubuntu  23061 May 29 08:03 .env.example
+-rw-rw-r--  1 ubuntu ubuntu    193 May 12 11:01 .envrc
+drwxrwxr-x  8 ubuntu ubuntu   4096 May 29 08:03 .git
+-rw-rw-r--  1 ubuntu ubuntu    120 May 12 11:01 .gitattributes
+drwxrwxr-x  5 ubuntu ubuntu   4096 May 12 11:01 .github
+-rw-rw-r--  1 ubuntu ubuntu   1987 May 29 08:03 .gitignore
+-rw-rw-r--  1 ubuntu ubuntu   1683 May 29 08:03 .hadolint.yaml
+-rw-rw-r--  1 ubuntu ubuntu   5743 May 12 11:01 .mailmap
+drwxrwxr-x  2 ubuntu ubuntu   4096 May 12 11:01 .plans
+-rw-rw-r--  1 ubuntu ubuntu   3705 Jun 16 02:31 AGENTMEMORY_MAC_SETUP.md
+-rw-rw-r--  1 ubuntu ubuntu  53040 May 29 08:03 AGENTS.md
+-rw-rw-r--  1 ubuntu ubuntu  44350 May 29 08:03 CONTRIBUTING.md
+-rw-rw-r--  1 ubuntu ubuntu  16212 May 29 08:03 Dockerfile
+-rw-rw-r--  1 ubuntu ubuntu   1070 May 12 11:01 LICENSE
+-rw-rw-r--  1 ubuntu ubuntu     87 May 12 11:01 MANIFEST.in
+-rw-rw-r--  1 ubuntu ubuntu   3899 Jun 16 02:29 MEMORY_SETUP_SUMMARY.md
+-rw-rw-r--  1 ubuntu ubuntu  13920 May 29 08:03 README.md
+-rw-rw-r--  1 ubuntu ubuntu  11775 May 29 08:03 README.zh-CN.md
+-rw-rw-r--  1 ubuntu ubuntu   1768 May 12 11:01 RELEASE_v0.10.0.md
+-rw-rw-r--  1 ubuntu ubuntu  43437 May 12 11:01 RELEASE_v0.11.0.md
+-rw-rw-r--  1 ubuntu ubuntu  52404 May 12 11:01 RELEASE_v0.12.0.md
+-rw-rw-r--  1 ubuntu ubuntu  63701 May 12 11:01 RELEASE_v0.13.0.md
+-rw-rw-r--  1 ubuntu ubuntu  52412 May 29 08:03 RELEASE_v0.14.0.md
+-rw-rw-r--  1 ubuntu ubuntu  71674 May 29 08:03 RELEASE_v0.15.0.md
+-rw-rw-r--  1 ubuntu ubuntu   8671 May 29 08:03 RELEASE_v0.15.1.md
+-rw-rw-r--  1 ubuntu ubuntu  32385 May 12 11:01 RELEASE_v0.2.0.md
+-rw-rw-r--  1 ubuntu ubuntu  35724 May 12 11:01 RELEASE_v0.3.0.md
+-rw-rw-r--  1 ubuntu ubuntu  45448 May 12 11:01 RELEASE_v0.4.0.md
+-rw-rw-r--  1 ubuntu ubuntu  32765 May 12 11:01 RELEASE_v0.5.0.md
+-rw-rw-r--  1 ubuntu ubuntu  26137 May 12 11:01 RELEASE_v0.6.0.md
+-rw-rw-r--  1 ubuntu ubuntu  33995 May 12 11:01 RELEASE_v0.7.0.md
+-rw-rw-r--  1 ubuntu ubuntu  36083 May 12 11:01 RELEASE_v0.8.0.md
+-rw-rw-r--  1 ubuntu ubuntu  32472 May 12 11:01 RELEASE_v0.9.0.md
+-rw-rw-r--  1 ubuntu ubuntu  15515 May 12 11:01 SECURITY.md
+drwxrwxr-x  2 ubuntu ubuntu   4096 May 29 08:10 __pycache__
+
+--- ~/.hermes/hermes-agent key subdirs ---
+/home/ubuntu/.hermes/hermes-agent/providers:
+total 32
+drwxrwxr-x  3 ubuntu ubuntu 4096 May 29 08:04 .
+drwxrwxr-x 36 ubuntu ubuntu 4096 Jun 16 02:31 ..
+-rw-rw-r--  1 ubuntu ubuntu 3356 May 12 11:01 README.md
+-rw-rw-r--  1 ubuntu ubuntu 6780 May 12 11:01 __init__.py
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 29 08:04 __pycache__
+-rw-rw-r--  1 ubuntu ubuntu 8174 May 29 08:03 base.py
+
+/home/ubuntu/.hermes/hermes-agent/personalities:
+ls: cannot access '/home/ubuntu/.hermes/hermes-agent/personalities': No such file or directory
+
+/home/ubuntu/.hermes/hermes-agent/skills:
+total 108
+drwxrwxr-x 27 ubuntu ubuntu 4096 May 12 11:01 .
+drwxrwxr-x 36 ubuntu ubuntu 4096 Jun 16 02:31 ..
+drwxrwxr-x  7 ubuntu ubuntu 4096 May 12 11:01 apple
+drwxrwxr-x  7 ubuntu ubuntu 4096 May 29 08:03 autonomous-ai-agents
+drwxrwxr-x 22 ubuntu ubuntu 4096 May 29 08:03 creative
+drwxrwxr-x  3 ubuntu ubuntu 4096 May 12 11:01 data-science
+drwxrwxr-x  5 ubuntu ubuntu 4096 May 12 11:01 devops
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 12 11:01 diagramming
+drwxrwxr-x  4 ubuntu ubuntu 4096 May 12 11:01 dogfood
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 12 11:01 domain
+drwxrwxr-x  3 ubuntu ubuntu 4096 May 12 11:01 email
+
+/home/ubuntu/.hermes/hermes-agent/plugins:
+total 88
+drwxrwxr-x 21 ubuntu ubuntu 4096 May 29 08:04 .
+drwxrwxr-x 36 ubuntu ubuntu 4096 Jun 16 02:31 ..
+-rw-rw-r--  1 ubuntu ubuntu   25 May 12 11:01 __init__.py
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 29 08:04 __pycache__
+drwxrwxr-x  5 ubuntu ubuntu 4096 May 29 08:03 browser
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 29 08:03 context_engine
+drwxrwxr-x  3 ubuntu ubuntu 4096 May 29 08:03 dashboard_auth
+drwxrwxr-x  2 ubuntu ubuntu 4096 May 29 08:03 disk-cleanup
+drwxrwxr-x  3 ubuntu ubuntu 4096 May 13 07:25 example-dashboard
+drwxrwxr-x  4 ubuntu ubuntu 4096 May 29 08:03 google_meet
+drwxrwxr-x  5 ubuntu ubuntu 4096 May 12 11:01 hermes-achievements
+
+--- /home/ubuntu/.hermes/ (user data) ---
+total 109284
+drwx------ 28 ubuntu ubuntu      4096 Jul 23 04:30 .
+drwxr-x--- 27 ubuntu ubuntu      4096 Jul 14 02:18 ..
+-rw-------  1 ubuntu ubuntu     23299 Jul 22 11:31 .env
+-rw-rw-r--  1 ubuntu ubuntu     35049 Jul 22 11:33 .hermes_history
+-rw-------  1 ubuntu ubuntu     60209 Jun 18 05:48 .skills_prompt_snapshot.json
+-rw-rw-r--  1 ubuntu ubuntu        54 Jul 23 02:31 .update_check
+-rw-rw-r--  1 ubuntu ubuntu       537 May 12 11:03 SOUL.md
+drwx------  2 ubuntu ubuntu      4096 May 12 11:03 audio_cache
+drwx------  2 ubuntu ubuntu      4096 May 29 07:20 auth
+-rw-------  1 ubuntu ubuntu      4525 Jul 22 11:32 auth.json
+-rw-rw-r--  1 ubuntu ubuntu         0 May 13 07:27 auth.lock
+drwxrwxr-x  2 ubuntu ubuntu      4096 May 13 07:43 bin
+drwxrwxr-x  3 ubuntu ubuntu      4096 May 30 12:34 cache
+-rw-------  1 ubuntu ubuntu      9010 Jul 23 04:29 channel_directory.json
+drwxrwxr-x  3 ubuntu ubuntu      4096 May 30 15:44 checkpoints
+-rw-------  1 ubuntu ubuntu     13444 Jul 22 11:31 config.yaml
+-rw-rw-r--  1 ubuntu ubuntu     55477 May 12 11:03 config.yaml.bak.20260512_110342
+-rw-rw-r--  1 ubuntu ubuntu     55477 May 12 11:03 config.yaml.bak.20260513_072601
+-rw-------  1 ubuntu ubuntu     13090 May 13 07:32 config.yaml.bak.20260513_073253
+-rw-------  1 ubuntu ubuntu     12349 May 30 15:43 config.yaml.bak.20260530_161847
+-rw-rw-r--  1 ubuntu ubuntu       207 May 14 13:18 context_length_cache.yaml
+drwx------  3 ubuntu ubuntu      4096 Jul 23 04:30 cron
+-rw-------  1 ubuntu ubuntu       230 Jun 16 02:26 discord_threads.json
+drwxrwxr-x  2 ubuntu ubuntu      4096 May 30 15:48 gateway
+-rw-rw-r--  1 ubuntu ubuntu       164 Jun  6 03:41 gateway.lock
+-rwxrwxr-x  1 ubuntu ubuntu       164 Jun  6 03:41 gateway.pid
+-rw-------  1 ubuntu ubuntu       666 Jun  6 03:41 gateway_state.json
+drwxrwxr-x 36 ubuntu ubuntu      4096 Jun 16 02:31 hermes-agent
+-rw-rw-r--  1 ubuntu ubuntu      8251 May 30 14:12 hermes-setup-plan.md
+-rw-rw-r--  1 ubuntu ubuntu       468 May 30 14:23 honcho.json
+drwx------  2 ubuntu ubuntu      4096 May 12 11:03 hooks
+drwx------  2 ubuntu ubuntu      4096 May 12 11:03 image_cache
+drwxrwxr-x  2 ubuntu ubuntu      4096 May 16 13:03 images
+-rw-rw-r--  1 ubuntu ubuntu      2129 May 30 12:30 interrupt_debug.log
+-rw-r--r--  1 ubuntu ubuntu    106496 May 29 08:04 kanban.db
+-rw-rw-r--  1 ubuntu ubuntu         0 May 29 08:04 kanban.db.init.lock
+drwx------  3 ubuntu ubuntu      4096 Jun  6 03:40 logs
+-rw-rw-r--  1 ubuntu ubuntu        74 May 16 12:49 mem0.json
+drwx------  2 ubuntu ubuntu      4096 Jun 16 02:34 memories
+
+--- agentmemory.service ---
+[Unit]
+Description=AgentMemory Server â€” shared persistent memory for AI coding agents
+Documentation=https://github.com/rohitg00/agentmemory
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.agentmemory
+ExecStart=/home/ubuntu/.local/bin/iii --config /home/ubuntu/.agentmemory/iii-config.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/home/ubuntu/.agentmemory/systemd.env
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+--- /etc/sudoers.d ---
+ls: cannot open directory '/etc/sudoers.d/': Permission denied
+--- /etc/nginx/sites-enabled ---
+total 8
+drwxr-xr-x 2 root root 4096 May 13 08:01 .
+drwxr-xr-x 9 root root 4096 Jul 21 06:55 ..
+lrwxrwxrwx 1 root root   34 May 13 07:59 default -> /etc/nginx/sites-available/default
+lrwxrwxrwx 1 root root   36 May 13 08:01 openwebui -> /etc/nginx/sites-available/openwebui
+--- ollama models ---
+NAME                       ID              SIZE      MODIFIED     
+gemma4:e4b                 c6eb396dbd59    9.6 GB    7 weeks ago     
+qwen3.6:latest             07d35212591f    23 GB     2 months ago    
+qwen3.5:9b                 6488c96fa5fa    6.6 GB    2 months ago    
+nomic-embed-text:latest    0a109f422b47    274 MB    2 months ago    
+--- /var/lib/docker/volumes (data dirs) ---
+091c7b7f128293297bfef634efb5e109de547811b9b6fac33a5a278ca86490dd
+9babc593e8d691af1ae768675c8307d84d0902fa8315ef60be6ed92e3d8d141d
+agentmemory_iii-data
+backingFsBlockDev
+geo_auditor_test_webui_data
+honcho-self-hosted_pgdata
+honcho-self-hosted_redis-data
+metadata.db
+open-webui

@@ -1,0 +1,156 @@
+=== Probe run 2: 2026-07-23T04:28:10Z ===
+--- hermes binary ---
+/usr/local/bin/hermes
+(binary /usr/local/bin/hermes)
+Hermes Agent v0.15.1 (2026.5.29)
+Project: /home/ubuntu/.hermes/hermes-agent
+Python: 3.11.15
+--- runtime tools ---
+docker (/usr/bin/docker): Docker version 29.4.3, build 055a478
+podman: missing
+uv: missing
+uvx: missing
+tailscale (/usr/bin/tailscale): 1.98.4
+jq (/usr/bin/jq): jq-1.7
+rg (/usr/bin/rg): ripgrep 14.1.0
+tree: missing
+python3 (/usr/bin/python3): Python 3.12.3
+node (/usr/bin/node): v20.20.2
+npm (/usr/bin/npm): 10.8.2
+curl (/usr/bin/curl): curl 8.5.0 (aarch64-unknown-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+systemctl (/usr/bin/systemctl): systemd 255 (255.4-1ubuntu8.16)
+ss (/usr/bin/ss): ss utility, iproute2-6.1.0
+find (/usr/bin/find): find (GNU findutils) 4.9.0
+nc: missing
+--- docker state ---
+NAMES                           IMAGE                                STATUS                    PORTS
+geo-auditor-webui               geo_auditor_test-webui               Up 9 days (healthy)       0.0.0.0:3081->3001/tcp, [::]:3081->3001/tcp
+geo-auditor-backend             geo_auditor_test-backend             Up 9 days (healthy)       0.0.0.0:3080->3000/tcp, [::]:3080->3000/tcp
+open-webui                      ghcr.io/open-webui/open-webui:main   Up 6 weeks (healthy)      100.79.87.93:3000->8080/tcp, 127.0.0.1:3000->8080/tcp
+neo4j                           neo4j:latest                         Up 6 weeks                127.0.0.1:7474->7474/tcp, 7473/tcp, 127.0.0.1:7687->7687/tcp
+qdrant_mem0                     qdrant/qdrant:latest                 Up 6 weeks                127.0.0.1:6333-6334->6333-6334/tcp
+honcho-self-hosted-api-1        honcho-self-hosted-api               Up 7 weeks (healthy)      127.0.0.1:8000->8000/tcp
+honcho-self-hosted-deriver-1    honcho-self-hosted-deriver           Up 7 weeks                8000/tcp
+honcho-self-hosted-redis-1      redis:8.2                            Up 7 weeks (healthy)      127.0.0.1:6379->6379/tcp
+honcho-self-hosted-database-1   pgvector/pgvector:pg15               Up 7 weeks (healthy)      127.0.0.1:5432->5432/tcp
+agentmemory-iii-init-1          busybox:1.36                         Exited (0) 2 months ago   
+--- /var/run/docker.sock ---
+srw-rw---- 1 root docker 0 May 13 07:50 /var/run/docker.sock
+--- compose files ---
+/home/ubuntu/.hermes/hermes-agent/docker-compose.yml
+/home/ubuntu/.hermes/hermes-agent/docker-compose.windows.yml
+/home/ubuntu/agentmemory/docker-compose.yml
+/home/ubuntu/agentmemory/deploy/coolify/docker-compose.yml
+/home/ubuntu/honcho-self-hosted/docker-compose.yml
+/home/ubuntu/geo_auditor_test/docker-compose.yml
+/home/ubuntu/geo_auditor_test/docker-compose.override.yml
+--- service units ---
+agentmemory.service                                        enabled         enabled
+tailscale-wait-online.service                              disabled        enabled
+tailscaled.service                                         enabled         enabled
+--- running services (head 60) ---
+  agentmemory.service                                        loaded active running AgentMemory Server — shared persistent memory for AI coding agents
+  containerd.service                                         loaded active running containerd container runtime
+  dbus.service                                               loaded active running D-Bus System Message Bus
+  docker.service                                             loaded active running Docker Application Container Engine
+  fwupd.service                                              loaded active running Firmware update daemon
+  getty@tty1.service                                         loaded active running Getty on tty1
+  iscsid.service                                             loaded active running iSCSI initiator daemon (iscsid)
+  ModemManager.service                                       loaded active running Modem Manager
+  nginx.service                                              loaded active running A high performance web server and a reverse proxy server
+  ollama.service                                             loaded active running Ollama Service
+  polkit.service                                             loaded active running Authorization Manager
+  rpcbind.service                                            loaded active running RPC bind portmap service
+  serial-getty@ttyAMA0.service                               loaded active running Serial Getty on ttyAMA0
+  snap.oracle-cloud-agent.oracle-cloud-agent-updater.service loaded active running Service for snap application oracle-cloud-agent.oracle-cloud-agent-updater
+  snap.oracle-cloud-agent.oracle-cloud-agent.service         loaded active running Service for snap application oracle-cloud-agent.oracle-cloud-agent
+  snapd.service                                              loaded active running Snap Daemon
+  ssh.service                                                loaded active running OpenBSD Secure Shell server
+  systemd-journald.service                                   loaded active running Journal Service
+  systemd-logind.service                                     loaded active running User Login Management
+  systemd-networkd.service                                   loaded active running Network Configuration
+  systemd-resolved.service                                   loaded active running Network Name Resolution
+  systemd-timesyncd.service                                  loaded active running Network Time Synchronization
+  systemd-udevd.service                                      loaded active running Rule-based Manager for Device Events and Files
+  tailscaled.service                                         loaded active running Tailscale node agent
+  udisks2.service                                            loaded active running Disk Manager
+  unattended-upgrades.service                                loaded active running Unattended Upgrades Shutdown
+  unified-monitoring-agent.service                           loaded active running unified-monitoring-agent: Fluentd based data collector for Oracle Cloud Infrastructure
+  user@1001.service                                          loaded active running User Manager for UID 1001
+--- tailscale ---
+100.79.87.93    instance-20260511-1727  noahklw119@  linux    -                           
+100.92.48.121   noahpc                  noahklw119@  windows  offline, last seen 11d ago  
+100.104.102.94  noahs-macbook-air       noahklw119@  macOS    offline, last seen 20h ago  
+100.127.177.18  node                    noahklw119@  macOS    offline, last seen 31d ago  
+--- tailscale ip ---
+100.79.87.93
+fd7a:115c:a1e0::e53b:575e
+--- tailscale netcheck ---
+2026/07/23 04:28:23 portmap: monitor: gateway and self IP changed: gw=10.0.0.1 self=10.0.0.178
+
+Report:
+	* Time: 2026-07-23T04:28:24.206325158Z
+	* UDP: true
+	* IPv4: yes, 129.150.37.112:57044
+	* IPv6: no, but OS has support
+	* MappingVariesByDestIP: false
+	* PortMapping: 
+	* Nearest DERP: Singapore
+	* DERP latency:
+		- sin: 1.9ms   (Singapore)
+		- hkg: 34.2ms  (Hong Kong)
+		- blr: 37.9ms  (Bengaluru)
+		- tok: 66.8ms  (Tokyo)
+		- syd: 99.1ms  (Sydney)
+		- dbi: 108.7ms (Dubai)
+		- par: 159.5ms (Paris)
+		- nue: 164.2ms (Nuremberg)
+		- sea: 170.5ms (Seattle)
+--- listening sockets ---
+State  Recv-Q Send-Q               Local Address:Port  Peer Address:PortProcess                                                                                                                                        
+LISTEN 0      128                        0.0.0.0:8642       0.0.0.0:*    users:(("python",pid=1110911,fd=22))                                                                                                          
+LISTEN 0      4096                     127.0.0.1:11434      0.0.0.0:*    users:(("ollama",pid=17377,fd=4))                                                                                                             
+LISTEN 0      4096                  100.79.87.93:3000       0.0.0.0:*    users:(("docker-proxy",pid=1106143,fd=8))                                                                                                     
+LISTEN 0      4096                 127.0.0.53%lo:53         0.0.0.0:*    users:(("systemd-resolve",pid=1154227,fd=15))                                                                                                 
+LISTEN 0      128                        0.0.0.0:49134      0.0.0.0:*    users:(("iii",pid=1993795,fd=15))                                                                                                             
+LISTEN 0      511                        0.0.0.0:443        0.0.0.0:*    users:(("nginx",pid=4069307,fd=7),("nginx",pid=4069306,fd=7),("nginx",pid=4069305,fd=7),("nginx",pid=4069304,fd=7),("nginx",pid=4069302,fd=7))
+LISTEN 0      4096                       0.0.0.0:22         0.0.0.0:*    users:(("sshd",pid=2250861,fd=3),("systemd",pid=1,fd=191))                                                                                    
+LISTEN 0      4096                       0.0.0.0:111        0.0.0.0:*    users:(("rpcbind",pid=534,fd=4),("systemd",pid=1,fd=247))                                                                                     
+LISTEN 0      511                        0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=4069307,fd=5),("nginx",pid=4069306,fd=5),("nginx",pid=4069305,fd=5),("nginx",pid=4069304,fd=5),("nginx",pid=4069302,fd=5))
+LISTEN 0      128                        0.0.0.0:3112       0.0.0.0:*    users:(("iii",pid=1993795,fd=10))                                                                                                             
+LISTEN 0      128                        0.0.0.0:3111       0.0.0.0:*    users:(("iii",pid=1993795,fd=9))                                                                                                              
+LISTEN 0      4096                       0.0.0.0:3081       0.0.0.0:*    users:(("docker-proxy",pid=1981597,fd=8))                                                                                                     
+LISTEN 0      4096                       0.0.0.0:3080       0.0.0.0:*    users:(("docker-proxy",pid=1981075,fd=8))                                                                                                     
+LISTEN 0      511                      127.0.0.1:3113       0.0.0.0:*    users:(("node",pid=1993816,fd=23))                                                                                                            
+LISTEN 0      4096                     127.0.0.1:3000       0.0.0.0:*    users:(("docker-proxy",pid=1106151,fd=8))                                                                                                     
+LISTEN 0      4096                     127.0.0.1:5432       0.0.0.0:*    users:(("docker-proxy",pid=3071206,fd=8))                                                                                                     
+LISTEN 0      4096                  100.79.87.93:62773      0.0.0.0:*    users:(("tailscaled",pid=2012392,fd=22))                                                                                                      
+LISTEN 0      4096                     127.0.0.1:7474       0.0.0.0:*    users:(("docker-proxy",pid=1105721,fd=8))                                                                                                     
+LISTEN 0      4096                     127.0.0.1:8000       0.0.0.0:*    users:(("docker-proxy",pid=607162,fd=8))                                                                                                      
+LISTEN 0      4096                     127.0.0.1:7687       0.0.0.0:*    users:(("docker-proxy",pid=1105738,fd=8))                                                                                                     
+LISTEN 0      4096                     127.0.0.1:6379       0.0.0.0:*    users:(("docker-proxy",pid=3071227,fd=8))                                                                                                     
+LISTEN 0      4096                     127.0.0.1:6333       0.0.0.0:*    users:(("docker-proxy",pid=1105332,fd=8))                                                                                                     
+LISTEN 0      4096                     127.0.0.1:6334       0.0.0.0:*    users:(("docker-proxy",pid=1105366,fd=8))                                                                                                     
+LISTEN 0      4096                    127.0.0.54:53         0.0.0.0:*    users:(("systemd-resolve",pid=1154227,fd=17))                                                                                                 
+LISTEN 0      4096                          [::]:22            [::]:*    users:(("sshd",pid=2250861,fd=4),("systemd",pid=1,fd=192))                                                                                    
+LISTEN 0      4096                          [::]:111           [::]:*    users:(("rpcbind",pid=534,fd=6),("systemd",pid=1,fd=249))                                                                                     
+LISTEN 0      511                           [::]:80            [::]:*    users:(("nginx",pid=4069307,fd=6),("nginx",pid=4069306,fd=6),("nginx",pid=4069305,fd=6),("nginx",pid=4069304,fd=6),("nginx",pid=4069302,fd=6))
+LISTEN 0      4096                          [::]:3081          [::]:*    users:(("docker-proxy",pid=1981603,fd=8))                                                                                                     
+LISTEN 0      4096                          [::]:3080          [::]:*    users:(("docker-proxy",pid=1981082,fd=8))                                                                                                     
+LISTEN 0      4096   [fd7a:115c:a1e0::e53b:575e]:58371         [::]:*    users:(("tailscaled",pid=2012392,fd=27))                                                                                                      
+--- crons ---
+total 12
+drwxr-xr-x   2 root root 4096 Apr 30 22:06 .
+drwxr-xr-x 106 root root 4096 Jul 22 06:14 ..
+-rw-r--r--   1 root root  202 Apr  8  2024 e2scrub_all
+--- env filtered ---
+--- relevant log files ---
+(no relevant logs)
+LICENSE
+THIRD_PARTY_LICENSES.txt
+embedded
+etc
+usr
+version-manifest.json
+version-manifest.txt
+=== end probe 2 ===
