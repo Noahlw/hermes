@@ -1,127 +1,134 @@
-# Hermes Grand Map
-> **Single canonical artifact** for the Hermes Agent deployment at `129.150.37.112`.
-> Compiled from the wayfinder chart at https://github.com/Noahlw/hermes/issues/1.
-> This is the **first compile pass** — most sections await ticket closure (D-013).
-> Compiled: 2026-07-23 (chart-pass v1). Re-run T-024 (#25) to refresh.
+# Hermes Grand Map — v2
+
+> Reality-anchored single canonical artifact for the Hermes Agent deployment at `129.150.37.112`.
+> Anchored to the 2026-07-23 VM probe (`probe-artifacts/`).
+> Compiled by T-NEW-09 (#35) on chart restart.
+
 ---
+
 ## Destination
-A production-grade **Nous Research `hermes-agent`** running on `129.150.37.112`, with: (1) a curated persona menu (incl. a `Librarian` persona), (2) a self-hosted persistent memory layer, (3) an internal **LLM wiki** system (cron-driven; clones default branches of 20–100 repos; embeds + indexes) — **deferred until core functionality lands** (D-010) — and (4) a **Tailscale-reachable MCP surface** that exposes *Hermes as a librarian* — so coding agents on the user's Mac and other PCs ask "how does X work in repo Y?" through Hermes, never against the wiki directly.
-## Decisions so far (D-001 .. D-014)
-Pulled verbatim from map #1 — each decision is one link-depth from a closed planning ticket.
+
+A **production-grade Hermes Agent (v0.15.1 already installed)** at `129.150.37.112`, with: (1) the **5-step setup plan from `/home/ubuntu/.hermes/hermes-setup-plan.md` completed** (subagent fallback chain, token optimization, config polish, VM maintenance cron, coder profile brought up to spec); (2) the existing **triple-stack memory** (Qdrant + mem0 + agentmemory + Honcho) audited and consolidated per the user's choice; (3) a **persona menu** based on SOUL.md + the existing `default` and `coder` profiles; (4) a **token-cost ledger** integrated with the existing `kanban.db`; (5) **`hermes-status` heartbeat** + Tailscale-side Tailscale on remaining PCs; (6) **wiki + librarian surface** (deferred until memory + personas + observability are functional); (7) a **monthly recommendation cron** that catches up with the tech landscape.
+
+## VM Snapshot (probe 2026-07-23)
+
+| Item | Value |
+|---|---|
+| Host | `instance-20260511-1727` (Ubuntu 24.04.4 LTS, aarch64) |
+| Resources | 4 CPU · 23 GiB RAM · 193 GB disk (105 GB free) |
+| Tailscale IP | `100.79.87.93` |
+| Hermes Agent | v0.15.1 (2026.5.29), Python 3.11.15, project at `/home/ubuntu/.hermes/hermes-agent/` |
+| Memory stack | Qdrant (`qdrant_mem0`) + mem0 + agentmemory (port 8642) + Honcho (postgres+redis+api+deriver) |
+| Other services | neo4j, ollama (11434), nginx, open-webui, honcho-self-hosted |
+| Shell wrapping | `/usr/local/bin/hermes` shim → Docker container |
+| Tailscale users | `noahklw119@` (this Linux); offline: `noahpc`, `node` (mac), `noahs-macbook-air` (this Mac, now online) |
+
+## Decisions so far (D-001..D-016)
+
+Pulled verbatim from map #27.
+
 - **D-001** — Claude-mem is abandoned; no history import. Wiki + memory carry cross-session context from now on.
-- **D-002** — Memory is **self-hosted** on the VM.
-- **D-003** — Personas are grilled in T-005, not pre-decided.
-- **D-004** — Cross-PC transport is **Tailscale**.
+
+- **D-002** — Memory is **self-hosted** on the VM. Realized as **triple-stack**: Qdrant (`qdrant_mem0`), mem0 (`~/.hermes/mem0.json`), agentmemory (`agentmemory.service` port 8642), Honcho (`honcho-self-hosted` Docker stack with postgres+redis+api+deriver, peer `hermes` observing `ubuntu`).
+
+- **D-003** — Personas are grilled, not pre-decided.
+
+- **D-004** — Cross-PC transport is **Tailscale**. Realized: VM at `100.79.87.93` online; this Mac `noahs-macbook-air` at `100.104.102.94` brought back online 2026-07-23.
+
 - **D-005** — Cross-PC surface is **Hermes as librarian**, not raw wiki.
-- **D-006** — `internal-wiki/` is **research input** only — sample for vocabulary/structure; don't inherit the project. Survives D-010 via T-017 (repurposed to glossary feeder).
-- **D-007** — Destination is **wider** (cron ingestion + cross-PC librarian) on top of the original four pillars.
-- **D-008** — Wiki scale is **medium** (20–100 repos, multi-language, single-VM with growth headroom).
-- **D-009** — **T-001 is sequenced for end-of-chart.** Lane-A work (`lane:no-ssh`) runs in full first; Lane B (`lane:ssh-gated`) is held until the user rotates the SSH key by hand.
-- **D-010** — **Wiki is deferred.** T-010 closed as not-planned. Wiki chain re-tickets when core Hermes + memory + librarian surface are functional end-to-end. The destination is unchanged; only the order of work has shifted.
-- **D-011** — **Wiki-chain parking.** T-012..T-016 closed as not-planned-per-D-010. T-011 and T-017 repurposed (parking marker + glossary feeder). Re-ticket the wiki chain when D-010 lifts.
-- **D-012** — **T-025 monthly recommender** — chart self-refreshes via a monthly `/research` subagent that produces 0+ new `phase:planning` tickets labeled `origin:auto-research`, `provenance:monthly-YYYY-MM`. User triages.
-- **D-013** — **Planning → Spec → Implementation life-cycle.** Every ticket is `phase:planning`. Closing one = spec lives in the close comment. Orchestrator spawns a `phase:implementation` child whose body is verbatim spec; agent claims, executes, closes.
-- **D-014** — **Five ops gaps added** as new Lane B tickets (T-019..T-023) — observability, librarian health, upgrade strategy, wiki backup (parked), token cost tracking.
+
+- **D-006** — `internal-wiki/` is **research input** only. Adopted via T-017 (repurposed to grand-map glossary feeder).
+
+- **D-007** — Destination scope is wider (cron + cross-PC + memory + observability).
+
+- **D-008** — Wiki scale **medium** (20–100 repos).
+
+- **D-009** — Lane discipline (lane:no-ssh vs lane:ssh-gated).
+
+- **D-010** — **Wiki deferred** until core functionality lands. T-010 closed; T-012..T-016 closed as not-planned-per-D-010/D-011. Parked until core ships.
+
+- **D-011** — Wiki-chain parking. T-011 and T-017 repurposed. T-022 wiki backup parked.
+
+- **D-012** — T-025 monthly recommender — chart self-refreshes via monthly `/research`.
+
+- **D-013** — Planning → Spec → Implementation life-cycle (`phase:planning`, `phase:implementation`, `phase:wrap-up`).
+
+- **D-014** — Five ops-gap tickets added (T-019..T-023).
+
+- **D-015** — **Probe-driven chart restart** (this map, 2026-07-23). The previous chart was anchored to a hypothetical `/opt/hermes/` layout; the v2 chart is anchored to the actual `/home/ubuntu/.hermes/` state captured in `probe-artifacts/`.
+
+- **D-016** — **Leaked SSH RSA key accepted as-is** (security debt). User explicitly chose option (b) in the access plan; T-NEW-09 (re-rotation) is the load-bearing remediation ticket.
 
 
-## Provider
+## T-NEW-03 (#29) Memory architecture
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-006 | open | [T-006] LLM tier routing + provider YAML | https://github.com/Noahlw/hermes/issues/7 |
+Pending T-NEW-03 close — audit/consolidate Qdrant+mem0+agentmemory+Honcho.
 
-## Personas
+## T-NEW-04 (#30) Persona menu
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-005 | open | [T-005] Persona menu grilling session | https://github.com/Noahlw/hermes/issues/6 |
-| T-007 | open | [T-007] Persona YAMLs + persona-switch UX | https://github.com/Noahlw/hermes/issues/8 |
+Pending T-NEW-04 close — persona menu + SOUL.md + default/coder integration.
 
-## Memory
+## T-NEW-05 (#31) Token-cost observability
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-008 | open | [T-008] Memory backend research | https://github.com/Noahlw/hermes/issues/9 |
-| T-009 | open | [T-009] Memory deployment + hardening | https://github.com/Noahlw/hermes/issues/10 |
+Pending T-NEW-05 close — kanban.db + Honcho derived ledger.
 
-## Network
+## T-NEW-06 (#32) Observability + tailscale
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-018 | open | [T-018] Tailscale bootstrap (VM + this Mac + other PC) | https://github.com/Noahlw/hermes/issues/19 |
+Pending T-NEW-06 close — `hermes-status` heartbeat, Tailscale on remaining PCs.
 
-## Observability
+## T-NEW-02 (#28) Five-step setup plan
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-019 | open | [T-019] Observability / heartbeat / status command | https://github.com/Noahlw/hermes/issues/20 |
-| T-020 | open | [T-020] Librarian service health & auto-restart | https://github.com/Noahlw/hermes/issues/21 |
-| T-023 | open | [T-023] Token cost tracking | https://github.com/Noahlw/hermes/issues/24 |
+Pending T-NEW-02 close — ship user's hermes-setup-plan.md Steps 1-5 to done.
 
-## Operations / Runbook
+## Wiki + Librarian (parked)
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-021 | open | [T-021] Hermes upgrade strategy | https://github.com/Noahlw/hermes/issues/22 |
+T-NEW-07 (#33): placeholder per D-010. Re-tickets when wiki returns.
 
-## Glossary
+## Monthly notes
 
-| Ticket | Status | Title | Link |
-|---|---|---|---|
-| T-017 | open (repurposed) | [T-017] Sample internal-wiki/ for prior art | https://github.com/Noahlw/hermes/issues/18 |
+T-NEW-08 (#34): monthly cron `~/.hermes/scripts/monthly-research.sh` — first run TBD.
+
 ## Open tickets (current state)
-19 open planning tickets. Lane A actionable now; Lane B behind T-001.
 
-| # | T | Lane | Type | Title |
+11 tickets open on the v2 chart:
+
+| # | ID | Type | Lane | Title |
 |---|---|---|---|---|
-| #2 | [T-001] | Lane B | task | Compromise-response key rotation |
-| #3 | [T-002] | Lane B | task | VM inventory + already-installed-Hermes assessment |
-| #4 | [T-003] | Lane B | task | VM clean-up plan |
-| #5 | [T-004] | Lane B | task | Hermes install or harden |
-| #6 | [T-005] | Lane A | grilling | Persona menu grilling session |
-| #7 | [T-006] | Lane A | research | LLM tier routing + provider YAML |
-| #8 | [T-007] | Lane B | task | Persona YAMLs + persona-switch UX |
-| #9 | [T-008] | Lane A | research | Memory backend research |
-| #10 | [T-009] | Lane B | task | Memory deployment + hardening |
-| #12 | [T-011] | Closed | task | Repo list for the wiki |
-| #18 | [T-017] | Closed | research | Sample internal-wiki/ for prior art |
-| #19 | [T-018] | Lane B | task | Tailscale bootstrap (VM + this Mac + other PC) |
-| #20 | [T-019] | Lane B | task | Observability / heartbeat / status command |
-| #21 | [T-020] | Lane B | task | Librarian service health & auto-restart |
-| #22 | [T-021] | Lane B | task | Hermes upgrade strategy |
-| #23 | [T-022] | Lane B | task | Wiki backup / restore target (parked pending D-010 lift) |
-| #24 | [T-023] | Lane B | task | Token cost tracking |
-| #25 | [T-024] | Lane A | task | Compile grand map from ticket outputs |
-| #26 | [T-025] | Lane A | research | Monthly improvement recommender |
+| #28 | T-NEW-01 | task | ssh-gated | [02] Ship the user's 5-step hermes-setup-plan.md t |
+| #29 | T-NEW-02 | grilling | ssh-gated | [03] Audit / consolidate Qdrant + mem0 + agentmemo |
+| #30 | T-NEW-03 | grilling | ssh-gated | [04] Persona menu — SOUL.md + default/coder profil |
+| #31 | T-NEW-04 | task | ssh-gated | [05] Token-cost ledger derived from kanban.db + Ho |
+| #32 | T-NEW-05 | task | ssh-gated | [06] hermes-status heartbeat + Tailscale on remain |
+| #33 | T-NEW-06 | task | ssh-gated | [07] Wiki + librarian MCP chain (parked per D-010) |
+| #34 | T-NEW-07 | task | no-ssh | [08] Monthly improvement recommender (realized as  |
+| #35 | T-NEW-08 | task | no-ssh | [09] GRANDMAP.md v2 recompile (T-024 successor) |
+| #36 | T-NEW-09 | task | ssh-gated | [10] Rotate leaked RSA SSH key — security debt |
+| #37 | T-NEW-10 | task | ssh-gated | [01] Verify provider/delegation against hermes-set |
 
-## Closed tickets (parked — wiki chain back-burnered per D-010 / D-011)
-| # | ID | Status | Re-ticket trigger |
-|---|---|---|---|
-| #11 | T-010 | closed (D-010) | Wiki returns |
-| #13 | T-012 | closed (D-011) | Wiki returns |
-| #14 | T-013 | closed (D-011) | Wiki returns |
-| #15 | T-014 | closed (D-011) | Wiki returns |
-| #16 | T-015 | closed (D-011) | Wiki returns |
-| #17 | T-016 | closed (D-011) | Wiki returns |
+
+## Closed tickets (parked / superseded)
+
+| # | Status | Note |
+|---|---|---|
+| #1 | archive:v1-map | v1 chart superseded |
+| #2-#26 | superseded | v1 tickets re-ticketed at #28-#37 |
+
 
 ## Out of scope
-- Multi-region / HA
+
+- Multi-region / HA / failover
 - Air-gapped deployment
-- Self-trained embeddings or LLMs (we consume, we don't ship)
+- Self-trained embeddings or LLMs (we consume, don't ship)
 - New desktop or mobile shells
 - Public exposure of any service without auth
-- Inheriting the `internal-wiki/` project as-is
-- Training new embeddings on the user's repos (use Voyage/Cohere/etc.)
+- Wiki core / library runtime work — parked per D-010
+- GitHub-side work (private repo upgrades, CI workflows)
+
 
 ## Re-running this compile
 
-Per T-024 (#25) ticket body, this artifact regenerates whenever:
-- A new D-N is appended to the map
-- A planning ticket closes (close comment is the spec)
-- An implementation ticket closes (deliverable summary + artifact path)
+Per T-NEW-09 (#35): recompile whenever:
+- A new D-N is appended to map #27
+- A planning ticket closes (close-comment is the spec)
+- An implementation ticket closes
 - Quarterly cron (default) OR user invocation of `/compile-grand-map`
-
-The next compile absorbs the latest state — concrete population of Provider/Personas/Memory/Network/Observability sections happens as Lane A agents close #6, #7, #9, #18.
-
-## Glossary (pending T-017 closure)
-_Vocabulary section populates when T-017 closes with the internal-wiki-concepts note._
