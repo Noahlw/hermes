@@ -151,13 +151,21 @@ After the rewrite, the parent will grill these one at a time:
 1. **D-NN-1: MiniMax-only enforcement scope.** **DECIDED: A** — Keep MiniMax-only non-negotiable; harden `config.yaml` delegation routes before #39 can close.
 2. **D-GW-1: Telegram 1:1 enforcement.** **SUPERSEDED by D-DISC-1** — Telegram is out of V1; do not spend grill cycles on `TELEGRAM_ALLOWED_USER_ID`.
 3. **D-DISC-1: Discord as sole V1 chat surface.** **DECIDED: A** — Assistant listens only on `DISCORD_HOME_CHANNEL`; senders must be in `DISCORD_ALLOWED_USERS`. Telegram fully out of V1. Follow-through: disable Telegram gateway paths for V1 and verify Discord allowlist enforcement.
-4. **D-EXP-1: Tailscale listener surface.** **DECIDED: A** — Document accepted Tailscale services (SSH, tailscaled, Hermes gateway, Open WebUI, AgentMemory). Leftover ports (nginx, geo-auditor, rpcbind) are cleanup debt, not #39 blockers. Non-negotiable = no internet-public exposure.
+4. **D-EXP-1: Tailscale listener surface.** **DECIDED: A** — Document accepted Tailscale services (SSH, tailscaled, Hermes gateway, Open WebUI). AgentMemory ports are removal targets (D-MEM-3). Leftover ports (nginx, geo-auditor, rpcbind) are cleanup debt, not #39 blockers.
 5. **D-RUN-1: Hermes runtime topology.** **DECIDED: A** — Host venv + `hermes-gateway.service` is canonical; Docker-Compose Hermes narrative retired. §6 already reflects this.
 6. **D-CAP-1: MCP tool names.** **DECIDED: A** — Keep the §5 names as the V1 target surface; register them on the existing Hermes MCP server. Live CLIs (`hermes kanban`/`hermes memory`) are transitional only.
-7. **D-MEM-3: AgentMemory removal.** **DECIDED** — AgentMemory (`iii`) MCP is out of V1 and must be **uninstalled entirely** before #39 closes: stop + disable `agentmemory.service`, remove `~/.local/bin/iii` and `~/.agentmemory/`, drop ports `3111`/`3112`/`49134` from accepted Tailscale services, remove from §6.5 memory stack, and unregister its MCP toolset.
-8. **D-CRON-1: 401 on weekly-workspace-cleanup.** **KEEP ON #39 (blocking for §1.4)** — triage auth failure (`****f14d`) before calling cron-digest “working.”
-9. **D-CRON-2: kanban.db empty.** **NON-BLOCKING** — document as observed; confirm cold-start vs outage later; does not block #39 close.
-10. **MEM-2 / memory-stack consolidation.** **DEFERRED to #41** — #39 does not pick among Qdrant/mem0/Honcho/neo4j. Research ticket #41 decides if the current stack is good enough or a better memory service exists. Only agentmemory has a #39 removal decision (D-MEM-3). Ollama is inference, not memory.
+7. **D-MEM-3: AgentMemory removal.** **DECIDED** — AgentMemory (`iii`) MCP is out of V1 and must be **uninstalled entirely** and verified live before #39 closes.
+8. **D-CRON-1: 401 on weekly-workspace-cleanup.** **NON-BLOCKING for #39 close (D-CLOSE-1=C)** — triage as separate ops ticket; §1.4 stays qualified until fixed.
+9. **D-CRON-2: kanban.db empty.** **NON-BLOCKING** — document as observed; confirm cold-start vs outage later.
+10. **MEM-2 / memory-stack consolidation.** **DEFERRED to #41** — #39 does not pick among Qdrant/mem0/Honcho/neo4j. Only agentmemory has a #39 removal decision (D-MEM-3). Ollama is inference, not memory.
+11. **D-CLOSE-1: When #39 closes.** **DECIDED: C** — Hybrid. **Live verify completed 2026-07-27** for MiniMax harden + AgentMemory uninstall + Telegram-off/Discord-only. Cron 401 and empty dirs remain non-blocking follow-ups.
+
+### Live verify evidence (2026-07-27T02:44Z)
+
+- Backups: `~/.hermes/config.yaml.bak.20260727T024441Z`, `~/.hermes/.env.bak.20260727T024441Z`
+- MiniMax: `fallback_providers=[]`, `delegation=minimax-cn/MiniMax-M3`
+- Discord: home channel `1510315295024218182`, allowed user `495257815057694720`; Telegram platform disabled; token renamed `TELEGRAM_BOT_TOKEN_DISABLED`; `GATEWAY_ALLOW_ALL_USERS=false`
+- AgentMemory: service not-found; artifacts under `*.disabled.20260727T024441Z`; ports 3111/3112/49134 closed; gateway still on 8642
 
 ---
 

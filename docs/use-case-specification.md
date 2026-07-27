@@ -330,17 +330,23 @@ Tailscale-only UFW allows the 3000-range AgentMemory ports; port 8642 has direct
 
 ---
 
-## 11. Open Debt Items (must be closed or downgraded before #39 can be closed)
+## 11. Open Debt Items
 
-1. **D-NN-1** MiniMax-only enforcement vs current multi-provider fallback chain. — `RESOLVED: keep non-negotiable; hardening required before #39 close` (A — non-negotiable KEPT; live multi-provider delegation is DEBT; #39 cannot close until `config.yaml` `delegation.provider` and `fallback_providers` are MiniMax-only (or removed)).
-2. **D-GW-1** Telegram 1:1 allowlist — `SUPERSEDED by D-DISC-1` (Telegram out of V1).
-3. **D-DISC-1** Discord home channel + `DISCORD_ALLOWED_USERS` as sole V1 chat surface — `RESOLVED: A`. Follow-through debt: disable Telegram gateway paths for V1 and verify Assistant only accepts home-channel + allowlisted Discord senders (even if `GATEWAY_ALLOW_ALL_USERS` remains true globally).
-4. **D-EXP-1** Tailscale-internal listener surface — `RESOLVED: A` (document accepted Tailscale services; leftover ports are cleanup debt, not #39 blockers).
-5. **D-RUN-1** Hermes runtime topology — `RESOLVED: A` (host venv + `hermes-gateway.service` is canonical; Docker-Compose Hermes narrative retired).
-6. **D-CAP-1** MCP tool names — `RESOLVED: A` (keep the §5 names as the V1 target surface; register them on the existing Hermes MCP server; live CLIs like `hermes kanban`/`hermes memory` are transitional only).
-7. **D-MEM-3** AgentMemory (`iii`) MCP — `RESOLVED: uninstall entirely` (see item 11).
-8. **D-CRON-1** Triage 401 auth failure on `weekly-workspace-cleanup` (key prefix `****f14d`) — **blocking for §1.4 cron-digest “working”**; keep on #39 debt list until fixed.
-9. **D-CRON-2** Empty `kanban.db` — `NON-BLOCKING note` (all tables empty; table name is `tasks` not `tickets`). Confirm cold-start vs outage later; does not block #39 close.
-10. **DIR-9/UC-1** Create `/home/ubuntu/.hermes/worktrees/` and `/home/ubuntu/.hermes/research/`.
-11. **D-MEM-3 actions (AgentMemory removal)** — AgentMemory is **out of V1 and must be uninstalled entirely** before #39 closes: stop + disable `agentmemory.service`; remove the `iii` binary (`~/.local/bin/iii`) and `~/.agentmemory/`; drop its Tailscale-exposed ports (`3111`, `3112`, worker `49134`) from the D-EXP-1 accepted-services list; remove `agentmemory` from the §6.5 memory stack; and unregister its MCP toolset from Hermes.
-12. **MEM-2 / memory-stack cleanup** — `DEFERRED to #41`. V1 does **not** decide which of Qdrant / mem0 / Honcho / neo4j stays. The original plan is a research ticket (#41) to judge whether the current stack is good enough or a better memory service exists. #39 only records observed presence + **D-MEM-3** (agentmemory uninstall). Ollama is **not** a memory service (local LLM/embedding inference) and must not be framed as part of the memory stack.
+> **D-CLOSE-1 = C (hybrid close):** #39 closes after live verify of MiniMax harden + AgentMemory uninstall + Telegram-off/Discord-only. **Those three were verified on the VM 2026-07-27.** Cron 401 and empty `worktrees/`/`research/` dirs remain non-blocking follow-ups.
+
+### Blocking for #39 close (must verify on VM)
+
+1. **D-NN-1** MiniMax-only — `VERIFIED 2026-07-27` on VM: `fallback_providers=[]`, `delegation.provider=minimax-cn`, `delegation.model=MiniMax-M3`, `model.default=MiniMax-M3`. Backup: `config.yaml.bak.20260727T024441Z`.
+2. **D-DISC-1** Discord-only — `VERIFIED 2026-07-27` on VM: `gateway.platforms.telegram.enabled=false`, `TELEGRAM_BOT_TOKEN` renamed to `TELEGRAM_BOT_TOKEN_DISABLED`, `GATEWAY_ALLOW_ALL_USERS=false`, `discord.allowed_channels`/`free_response_channels`=`1510315295024218182`, `discord.allowed_users`=`495257815057694720`. Backup: `.env.bak.20260727T024441Z`.
+3. **D-MEM-3** AgentMemory uninstall — `VERIFIED 2026-07-27` on VM: service inactive/not-found; unit moved to `agentmemory.service.disabled.20260727T024441Z`; `iii` + `~/.agentmemory` moved to `*.disabled.20260727T024441Z`; ports `3111`/`3112`/`49134` gone; Hermes gateway still active on `8642`.
+
+### Non-blocking follow-ups (do not hold #39 close)
+
+4. **D-GW-1** Telegram 1:1 allowlist — `SUPERSEDED by D-DISC-1`.
+5. **D-EXP-1** Tailscale surface — `RESOLVED: A` (documented allowlist; leftovers = cleanup debt).
+6. **D-RUN-1** Runtime topology — `RESOLVED: A`.
+7. **D-CAP-1** MCP tool names — `RESOLVED: A` (target surface; build is implementation, not #39).
+8. **D-CRON-1** `weekly-workspace-cleanup` 401 (`****f14d`) — triage as separate ops ticket; §1.4 “working” stays qualified until fixed.
+9. **D-CRON-2** Empty `kanban.db` — non-blocking note.
+10. **DIR-9/UC-1** Create `/home/ubuntu/.hermes/worktrees/` and `research/` — V1 build / ops follow-up.
+11. **MEM-2 / memory-stack cleanup** — `DEFERRED to #41`. Ollama is inference, not memory.

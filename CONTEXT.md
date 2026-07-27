@@ -69,3 +69,7 @@ On-VM model serving used for embeddings or generation (today: Ollama). Distinct 
 ## Tailscale-internal surface
 
 Services intentionally reachable on the Tailscale mesh (not the public internet). V1 accepts SSH, tailscaled, Hermes gateway, and Open WebUI on that mesh. AgentMemory ports are removal targets. Leftover listeners are cleanup debt, not a rewrite of the zero-public-exposure rule.
+
+## Hybrid close
+
+For use-case research tickets: close after the accepted spec is written **and** a short list of live VM hardening checks pass; remaining ops may follow as separate tickets.
