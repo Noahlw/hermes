@@ -142,7 +142,7 @@ reload_cluster
 # ---------------------------------------------------------------------------
 
 psql_admin() {
-    sudo -n -u postgres psql -h /var/run/postgresql -tA -X -v ON_ERROR_STOP=1 "$@"
+    sudo -n -u postgres psql -h /var/run/postgresql -p "${PG_PORT}" -tA -X -v ON_ERROR_STOP=1 "$@"
 }
 
 ensure_role() {
