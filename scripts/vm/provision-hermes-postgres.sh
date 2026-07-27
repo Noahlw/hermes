@@ -76,36 +76,42 @@ sudo -n chmod 0644 "${PORT_DROPIN}"
 log "wrote ${PORT_DROPIN}"
 
 # ---------------------------------------------------------------------------
-# Step 4: pg_hba — append trust lines for the two DBs.
+# Step 4: pg_hba — insert trust lines for the two DBs.
 #
 # NOTE: `include_dir` only applies to postgresql.conf, not pg_hba.conf. The
 # plan called for a conf.d drop-in for pg_hba, but Ubuntu's pg_hba does not
-# auto-include conf.d files. We therefore append a marker + two host lines
-# to pg_hba.conf directly. Idempotent: marker gates re-append.
+# auto-include conf.d files. We therefore insert a marker + two host lines
+# directly into pg_hba.conf. They MUST be placed BEFORE the catch-all
+# `host all all 127.0.0.1/32 scram-sha-256` line, otherwise Postgres picks
+# the scram-sha-256 rule first. Idempotent: marker gates re-insert.
 # ---------------------------------------------------------------------------
+
+HBA_BLOCK_START="$(sudo -n grep -n '^# IPv4 local connections:$' "${PG_HBA}" | head -1 | cut -d: -f1)"
+if [[ -z "${HBA_BLOCK_START}" ]]; then
+    fail "could not locate '# IPv4 local connections:' marker in ${PG_HBA}"
+fi
 
 if sudo -n grep -qF "${HBA_MARKER}" "${PG_HBA}" 2>/dev/null; then
     log "pg_hba trust lines already present (marker found)"
 else
-    log "appending Hermes trust lines to ${PG_HBA}"
+    log "inserting Hermes trust lines BEFORE line ${HBA_BLOCK_START} in ${PG_HBA}"
+    TMP_HBA="$(mktemp)"
+    sudo -n cat "${PG_HBA}" > "${TMP_HBA}"
+    insert_at=$((HBA_BLOCK_START - 1))
+    head -n "${insert_at}" "${TMP_HBA}" > "${TMP_HBA}.new"
     {
-        printf '\n%s\n' "${HBA_MARKER}"
+        printf '%s\n' "${HBA_MARKER}"
         printf 'host    %s,%s    all             127.0.0.1/32            trust\n' \
             "${DB_HERMES}" "${DB_INDEX}"
         printf 'host    %s,%s    all             ::1/128                 trust\n' \
             "${DB_HERMES}" "${DB_INDEX}"
-    } | sudo -n tee -a "${PG_HBA}" >/dev/null
+        printf '\n'
+    } >> "${TMP_HBA}.new"
+    tail -n +"${insert_at}" "${TMP_HBA}" >> "${TMP_HBA}.new"
+    sudo -n tee "${PG_HBA}" < "${TMP_HBA}.new" >/dev/null
     sudo -n chown postgres:postgres "${PG_HBA}"
     sudo -n chmod 0644 "${PG_HBA}"
-fi
-
-# Ensure local peer fallback exists for the unix socket (Ubuntu default file
-# already covers `postgres` peer; we add a generic `all` peer entry if absent).
-if ! sudo -n grep -Eq '^local[[:space:]]+all[[:space:]]+all[[:space:]]+peer' "${PG_HBA}"; then
-    log "appending local peer fallback to ${PG_HBA}"
-    printf '\n# Hermes (#47) - local socket peer fallback\nlocal   all             all                                     peer\n' \
-        | sudo -n tee -a "${PG_HBA}" >/dev/null
-    sudo -n chown postgres:postgres "${PG_HBA}"
+    rm -f "${TMP_HBA}" "${TMP_HBA}.new"
 fi
 
 # ---------------------------------------------------------------------------
