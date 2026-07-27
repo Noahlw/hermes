@@ -3,7 +3,7 @@
 **Wayfinder ticket:** [#47](https://github.com/Noahlw/hermes/issues/47)  
 **Parent:** [#38](https://github.com/Noahlw/hermes/issues/38) · follow-up from [#41](https://github.com/Noahlw/hermes/issues/41) MEM-3/4  
 **Branch:** `task/47-provision-postgres`  
-**Status:** grilling complete pending shared-understanding confirm (2026-07-27)
+**Status:** locks committed `822d301` (2026-07-27); implementation plan next
 
 ## Locked decisions
 
