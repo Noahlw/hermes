@@ -127,18 +127,70 @@ Use a staged query path:
 5. For implementation planning, materialize or fetch the exact files at one verified commit, inspect surrounding code and dependency edges, and only then produce the plan.
 6. If the local index is stale or unavailable, fall back to live GitHub retrieval with an explicit “live snapshot” provenance and reduced confidence. If required source cannot be verified, return a blocked plan instead of inventing a change.
 
+## Locked decisions (grill round, 2026-07-26)
+
+| ID | Decision | Consequence |
+|---|---|---|
+| **Q11** (from #39) | Hybrid local mirror + incremental index | Matches the recommended row in the comparison table above. |
+| **Q12** (from #39) | 80 GB hard disk cap: shallow clones, sparse checkouts, source files only, LRU eviction above 80 GB | Constrains the "full clone" option; partial/sparse policy is mandatory for the inactive pool, not optional. |
+| **IDX-1** | **Hosted embeddings are permitted** for the semantic layer (not local-only) | Model selection is delegated to ticket **#43** (Voyage / Cohere / OpenAI / open-weight comparison). See privacy amendment below. |
+| **IDX-2** | **Active-set full / inactive shallow** | See active-set policy below. |
+| **IDX-3** | **Defer local index store engine** until after #41 | Spec requires only: local, commit-addressable, FTS-capable knowledge layer under Hermes control. SQLite FTS5 vs Postgres+pgvector is an implementation pick after memory-stack research (#41) lands — do not couple #40 to a DB choice now. |
+| **IDX-4** | **Public HTTPS webhook endpoint** for GitHub push events | GitHub delivers to a public HTTPS URL (Tailscale Funnel or reverse proxy). See exposure amendment below. |
+| **IDX-5** | **Explicit repo allowlist** in Hermes config | Only `owner/name` (+ tracked refs) listed in config are indexed. Nothing is indexed until added. Safest for secrets, disk, and embedding egress. |
+| **IDX-6** | **Default branch + optional explicit extra refs** | Each catalog row always tracks the repo default branch; additional refs (e.g. `release/*`) only if listed on that row. No “index every branch” in V1. |
+| **IDX-7** | **Soft delete on allowlist removal** | Stop webhook updates; mark catalog `revoked`; keep knowledge + inactive blobs for **30 days**, then purge vectors/blobs/local clone. In-flight plans keep their pinned commit until done. |
+
+### IDX-4 exposure amendment (required)
+
+Choosing a public webhook endpoint is a deliberate exception to “zero public exposure”:
+
+- **Allowed inbound:** only the GitHub webhook path (HMAC-validated via `X-Hub-Signature-256`), ACK within 10 seconds, enqueue then return. No other Hermes MCP/UI surface may ride this endpoint.
+- **Not allowed:** exposing Open WebUI, Hermes gateway (`8642`), or AgentMemory on the public internet — those stay Tailscale-internal per D-EXP-1.
+- **Required controls:** signature verification, idempotent job keys (`repo`/`ref`/`after` SHA), rate limiting, and a periodic reconcile that still runs if deliveries fail or Funnel/proxy is down.
+- Document the public hostname/path in ops notes; rotate the webhook secret with the same discipline as other VM secrets.
+
+### IDX-1 privacy amendment (required)
+
+Permitting hosted embeddings means **source-code chunks leave the VM** for a third-party embedding API. This is a deliberate narrowing of the "self-hosted / zero public exposure" non-negotiable and must be written down as such:
+
+- The non-negotiable continues to mean **no inbound public exposure of Hermes services**, and **no hosted generation** (MiniMax-M3 only for generation, per D-NN-1).
+- It no longer means "no source text ever leaves the VM." Outbound embedding calls to a selected provider are in scope for V1.
+- Required controls: a single configured embedding provider, an explicit allowlist of what may be embedded (exclude secrets, `.env`, generated artifacts, vendored trees), recorded model + version provenance on every vector, and the ability to switch to a local model without reindexing semantics changing meaning.
+- Ticket **#43** selects the provider and must treat "source text egress" as a first-class evaluation criterion alongside retrieval quality, cost, and latency.
+
+### IDX-2 active-set policy (required)
+
+Two layers, deliberately separated:
+
+1. **Knowledge layer (always rich).** Paths, symbols, signatures, docstrings, chunk hashes, and (after #43) embeddings are built from a one-pass full materialization and maintained incrementally via webhook deltas. Sparse checkout **never** touches this layer.
+2. **Blob layer (active-set).** A repo becomes **active** the first time Developer/MCP opens it, stays fully cloned at the pinned commit while active, and is never shrunk while in use. After **14 days** of inactivity it demotes to shallow/sparse. The **80 GB cap applies only to the inactive (sparse) pool**. Active repos live outside the cap; under disk pressure Hermes warns before LRU evicts anything mid-task.
+
+**KB-richness invariant:** the knowledge layer stays exactly as rich as it was the last time the repo was fully materialized. Holds because (1) the index tier is independent of sparse checkout, (2) embeddings are keyed by content hash not checkout state, and (3) demoting active→sparse never forces a re-embed storm.
+
+| Failure mode that would reduce KB richness | Defense |
+|---|---|
+| Never-materialized files | First-index path requires a one-pass full materialization before the repo enters the catalog as "indexed" |
+| Post-index code drift | Webhook + periodic reconcile updates knowledge layer from `before`/`after` SHAs; plan path verifies cited commit |
+| Misconfigured sparse cone | Sparse applies only to inactive blob tier; knowledge layer does not read from sparse working trees |
+| Embedding churn on demote | Vectors keyed by content hash; demote does not re-embed |
+| Secret / vendored embeddings | IDX-1 allowlist excludes secrets, `.env`, generated artifacts, vendored trees |
+
+### IDX-7 retention note
+
+Grace period = 30 days from allowlist removal. Operator can force-purge earlier. Re-adding the same `owner/name` during grace resumes from the last indexed SHA when possible; after purge, treat as a fresh first-index (full materialization required).
+
 ## Decision implications and follow-on questions
 
-This research resolves the architecture direction for issue #40 but does not choose every implementation detail. The next map tickets should pin down:
+**Resolved by this grill for #40:** architecture direction (hybrid), disk/active-set policy (IDX-2), hosted embeddings allowed (IDX-1 → #43), store engine deferred (IDX-3 → after #41), public webhook endpoint (IDX-4), allowlist + refs (IDX-5/6), soft-delete retention (IDX-7).
 
-- Which repositories and refs are in V1, and what access scopes are acceptable?
-- Full clone versus partial/sparse policy based on measured aggregate size and code-plan workloads.
-- Exact parser/language coverage and the cross-repository symbol/dependency identity model.
-- Chunk boundaries, metadata schema, embedding model, model-upgrade policy, and whether embeddings must be local-only.
-- Local storage choice: SQLite FTS5 plus a vector extension/store, or Postgres plus pgvector.
-- Webhook deployment over Tailscale, queue/retry behavior, periodic reconciliation interval, and failure visibility.
-- Retention and deletion behavior for removed repositories, revoked access, secrets, generated files, and private branches.
-- Evaluation fixtures for retrieval precision, stale-result rejection, cross-repository navigation, and implementation-plan correctness.
+**Still deferred (not blocking #40 research close):**
+
+- Exact parser/language coverage and cross-repository symbol identity model → implementation / later ticket.
+- Chunk boundaries, embedding model, model-upgrade policy → **#43**.
+- Concrete DB engine (SQLite FTS5 vs Postgres+pgvector) → after **#41**.
+- Evaluation fixtures for retrieval precision / stale-result rejection → implementation acceptance tests.
+- Which specific repos seed the first allowlist → operator config when deploying.
 
 ## Source notes
 
