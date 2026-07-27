@@ -64,18 +64,28 @@ _Avoid_: one combined DB for Hermes ops and repo wiki; treating Ollama as memory
 
 ## Hermes database
 
-Durable Postgres store for Hermes itself: canonical records, audit/events, research evidence, persona/task scope metadata, session-brief pointers, structured digests/allowlists (not codebase chunks; not Honcho’s peer graph).
-_Avoid_: storing full repo indexes here; peer-chat wiki as SoT; SQLite as the V1 Hermes canonical engine
+Durable Postgres store for Hermes itself: canonical records, audit/events, research evidence, persona/task scope metadata, session-brief pointers, structured digests/allowlists (not codebase chunks; not Honcho’s peer graph). Lives in a **dedicated Hermes Postgres instance** managed by **systemd/apt** (not Docker, not Honcho’s container), as one of two logical databases on that instance.
+_Avoid_: storing full repo indexes here; peer-chat wiki as SoT; SQLite as the V1 Hermes canonical engine; sharing Honcho’s Postgres for Hermes canonical data; Docker Compose for the Hermes Postgres engine
 
 ## Codebase index database
 
-Durable Postgres store (+ pgvector + FTS) for processed coding repositories: commit-addressable paths, symbols, chunks, lexical + semantic retrieval over the #40 knowledge layer. Read by all personas; writable only through controlled ingestion.
-_Avoid_: persona-private notes; mixing with Hermes operational tables; Qdrant-as-sole code SoT
+Durable Postgres store (+ pgvector + FTS) for processed coding repositories: commit-addressable paths, symbols, chunks, lexical + semantic retrieval over the #40 knowledge layer. Same dedicated Hermes Postgres instance as the Hermes database, separate logical DB and role. Read by all personas; writable only through controlled ingestion.
+_Avoid_: persona-private notes; mixing with Hermes operational tables; Qdrant-as-sole code SoT; co-locating in Honcho’s Postgres
 
 ## Session brief
 
-A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and task memory, not from peer-chat modeling alone.
-_Avoid_: dumping full chat history; uncited “what I remember” narratives as the brief
+A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and an explicit task seed (optional repo filters), not from peer-chat modeling alone.
+_Avoid_: dumping full chat history; uncited “what I remember” narratives as the brief; requiring Honcho preferences to build the V1 brief
+
+## session_brief
+
+The MCP tool that produces a Session brief for the Mac coding agent. V1 input: task string plus optional repos; V1 corpus: codebase index only.
+_Avoid_: Honcho-only briefs; brief-with-no-task as the V1 default
+
+## conduct_research
+
+The MCP tool for external/technical research aimed at the Mac coding agent. V1 returns a structured evidence bundle (claims, sources, confidence) in the MCP response. Persisting Markdown under Hermes `research/` may be an internal archive side effect; callers must not depend on a VM path.
+_Avoid_: path-only research results; free-form essay with no evidence schema as the V1 contract
 
 ## Working memory (V1)
 
@@ -103,3 +113,53 @@ For use-case research tickets: close after the accepted spec is written **and** 
 
 The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres; secrets via a separate encrypted/offline path.
 _Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting `.env`/tokens in the public repo or unencrypted Drive
+
+## Schema migrations (Hermes)
+
+Versioned SQL files in this repository that create and alter the Hermes database and codebase index database. Applied on the VM with `psql` (not Alembic against hermes-agent).
+_Avoid_: one-shot undocumented bootstrap; coupling V1 schema to upstream hermes-agent ORM
+
+## MCP tool surface
+
+The set of named MCP tools Hermes exposes to coding agents and other Tailscale consumers. V1 uses an explicit suite of tools, each with its own input/output contract and authority boundary — not a single routing primitive.
+_Avoid_: one mega-tool as the only surface; collapsing authority into free-form prompt text
+
+## Information provider
+
+The V1 posture of the Hermes MCP surface toward Mac coding agents: supply cited information the local agent needs. Hermes does not author implementation plans, mutate worktrees, or open PRs for that agent.
+_Avoid_: generate_plan / execute_plan / push_plan_pr as core V1 MCP tools; “Hermes plans or implements my ticket” as the default V1 story
+
+## Coding-agent MCP jobs (V1)
+
+The three jobs a Mac coding agent may call Hermes MCP for in V1: cross-repo retrieval (R), session/task brief (B), and external research (X). Tutor, personal Discord tasks, and operator/VM status are not part of this coding-agent MCP job set.
+_Avoid_: packing plan/execute/push into this job set; treating Discord task capture as a Mac-agent MCP job
+
+## Coding-agent MCP suite (V1 draft)
+
+Named consumer tools for the Mac coding agent: `library_search` (R), `session_brief` (B), `conduct_research` (X), `knowledge_catalog` (indexed repos + freshness in one response), `expand_citation`, and `impact_map`. Still information-only; no plan/execute/push tools. No `agent_query` mega-router on this consumer surface — the Mac agent calls named tools only.
+_Avoid_: raw git navigate/blame/diff as peer MCP tools; splitting catalog and freshness into two MCP tools; merging all six into one job-enum mega-tool; agent_query as the coding-agent entrypoint
+
+## knowledge_catalog
+
+The MCP tool that lists what the codebase knowledge layer can see: indexed repositories and per-repo (or filtered) sync/freshness. One tool covers both inventory and trust signals.
+_Avoid_: separate list_indexed_repos and index_freshness tools in V1
+
+## library_search
+
+The single consumer-facing MCP read tool over the shared codebase knowledge layer. It returns a citation-backed synthesized answer plus short inline snippets for top hits. Path/symbol navigation, history, and diffs stay as internal index capabilities behind that tool — they are not separate V1 MCP tools.
+_Avoid_: split read suite (search / explain / navigate / history-diff) as peer MCP tools in V1; pointers-only answers with no snippets; always returning full hunks in search
+
+## expand_citation
+
+The MCP tool that materializes a wider or full code hunk from a citation returned by `library_search` (or another Hermes tool). Used when short inline snippets are not enough.
+_Avoid_: replacing library_search; exposing raw path browse as a general file API
+
+## impact_map
+
+The MCP tool that returns a ranked cross-repo blast radius of related files/symbols from the codebase index. V1 accepts a structured seed (`repo` plus `symbol` or `path`, optional `revision`) as the preferred path, and also allows a natural-language change-intent mode when the Mac agent has not yet pinned a symbol/path.
+_Avoid_: treating impact_map as generate_plan; NL intent as a substitute for an implementation plan artifact
+
+## Structured tool environment
+
+The fixed schemas, prompts, and authority checks around each MCP tool that steer MiniMax-M3 toward reliable output. V1 prefers strong contracts and guided backends over free-form routing the model must invent mid-call.
+_Avoid_: underspecified mega-prompts; relying on the model to invent tool steps without schema guidance
