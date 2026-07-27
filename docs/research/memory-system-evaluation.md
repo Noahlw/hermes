@@ -21,13 +21,15 @@
 
 ### Close checklist (MEM-8)
 
-- [ ] neo4j container not running / disabled stamp; ports 7474/7687 closed
-- [ ] Qdrant_mem0 container not running / disabled stamp; ports 6333/6334 closed
-- [ ] mem0.json absent (only *.disabled.*)
-- [ ] Hermes memory.provider == honcho (unchanged)
-- [ ] Honcho compose healthy
-- [ ] hermes-gateway.service active
-- [ ] Neo4j Drive backup cron not enabled
+- [x] neo4j container not running / disabled stamp; ports 7474/7687 closed
+- [x] Qdrant_mem0 container not running / disabled stamp; ports 6333/6334 closed
+- [x] mem0.json absent (only *.disabled.*)
+- [x] Hermes memory.provider == honcho (unchanged)
+- [x] Honcho compose healthy
+- [x] hermes-gateway.service active
+- [x] Neo4j Drive backup cron not enabled
+
+Verified 2026-07-27 UTC against `477290a`. neo4j/Mem0/Qdrant stamps TS 20260727T043504Z / 20260727T043428Z; Honcho retained as V1 working memory; gateway active on 8642.
 
 ### Observed VM baseline (re-verified 2026-07-27)
 
