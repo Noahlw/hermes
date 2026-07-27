@@ -39,12 +39,18 @@ class DiscordRoute:
 
 
 def _infer_action(persona_id: str, content: str) -> str:
-    # Precedence: bot identity / tutoring intent beat bare "task" topic words.
+    # Precedence:
+    # 1) explicit task-management phrasing (so Tutor can refuse + hint)
+    # 2) Tutor bot identity / tutoring intent
+    # 3) bare "task(s)" word for Assistant-style routing
+    # 4) default digest
+    if _TASK_MANAGEMENT.search(content):
+        return "manage_tasks"
     if persona_id == "tutor":
         return "conduct_tutoring"
     if _TUTORING_INTENT.search(content):
         return "conduct_tutoring"
-    if _TASK_MANAGEMENT.search(content) or _TASK_WORD.search(content):
+    if _TASK_WORD.search(content):
         return "manage_tasks"
     return "compose_digest"
 
