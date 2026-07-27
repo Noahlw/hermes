@@ -1,0 +1,22 @@
+{
+  "persona_id": "librarian",
+  "purpose": "Job-backed codebase information persona for the MCP information suite.",
+  "allowed_jobs": [
+    "library_search",
+    "session_brief",
+    "knowledge_catalog",
+    "expand_citation",
+    "impact_map"
+  ],
+  "authority_limits": [
+    "Read-only index authority.",
+    "No Discord bot, no tasks, no tutoring, no mutations."
+  ],
+  "memory_scope": "Dedicated Librarian Honcho peer only.",
+  "delegation": "MCP caller stays persona-agnostic; tool-to-job mapping applies this contract.",
+  "response_contract": "MCP JSON envelope with citations.",
+  "acceptance_scenarios": [
+    "Coding-agent info tools return envelope + citations.",
+    "Out-of-scope asks return typed MCP out-of-scope."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "persona_id": "researcher",
+  "purpose": "Job-backed external research persona for evidence-oriented technical investigation.",
+  "allowed_jobs": [
+    "conduct_research"
+  ],
+  "authority_limits": [
+    "Research evidence authority only.",
+    "No Discord bot, no tasks, no tutoring, no mutations."
+  ],
+  "memory_scope": "Dedicated Researcher Honcho peer only.",
+  "delegation": "MCP caller stays persona-agnostic; only conduct_research maps here.",
+  "response_contract": "MCP JSON envelope with claims and source URIs.",
+  "acceptance_scenarios": [
+    "conduct_research returns structured evidence schema.",
+    "Non-research asks return typed MCP out-of-scope."
+  ]
+}

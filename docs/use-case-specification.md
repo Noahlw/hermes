@@ -96,64 +96,100 @@
 
 ---
 
-## 4. 6-Persona Roster Contracts (V1 Target)
+## 4. V1 Persona Roster Contracts (Five Fixed Personas)
 
-> **Reader note:** This is the **target contract**. Today, only four role/task containers exist on disk (`coder`, `council`, `research`, `runner`) and `SOUL.md` is effectively empty. See ledger PERS-1..4.
+> **Reader note:** This section is the binding V1 roster contract from ADR 0003 and supersedes the older six-persona draft. See `docs/adr/0003-v1-persona-roster-and-contracts.md`.
 
-Per Issue #38 (line 21), callers select specialized personas explicitly. No selection → `Main Agent`. Peer-to-peer delegation prohibited; specialists escalate only to `Main Agent`. `Main Agent` performs controlled delegation only when specialized capabilities are required.
+Hermes V1 ships five fixed personas: `Main Agent`, `Librarian`, `Researcher`, `Assistant`, and `Tutor`. `Developer` is explicitly out of V1 while the coding-agent MCP remains information-only (ADR 0001).
 
-### 4.1 `Main Agent` (target)
-- **Purpose:** Default caller fallback, request router, background cron/system-monitoring digest orchestrator.
-- **Allowed Tools (target):** `agent_query`, `library_search`, `conduct_research`, `manage_tasks`.
-- **Authority Limits:** Cannot execute code mutations directly; must delegate code modifications to `Developer`.
-- **Memory Scope:** Shared codebase knowledge layer + global system state.
-- **Response Contract:** Executive routing summaries or consolidated cron digests.
-- **Delegation Permissions:** Controlled, per Issue #38 L21. Delegates to specialists only when their capability is required.
-- **Out-of-Scope:** Unhandled requests return structured out-of-scope error.
-- **Acceptance Scenario:** generic query without persona → `Main Agent` routes or answers.
+Persona selection is transport-specific:
+- **Discord:** @-mentioned bot identity selects persona (`Assistant`, `Tutor`, `Main Agent`).
+- **MCP:** callers stay persona-agnostic; tool name maps to Librarian/Researcher jobs through one persona contract gate.
+- **Cron/Ops:** run as `Main Agent` without Discord.
 
-### 4.2 `Librarian`
-- **Allowed Tools (target):** `library_search`.
-- **Authority Limits:** Read-only.
-- **Response Contract:** Synthesized Markdown + revision citations.
+### 4.1 `Main Agent`
+- **Purpose:** Ops + escalation persona and Discord super-set escape hatch (`Assistant ∪ Tutor ∪ ops`).
+- **Allowed Actions:** `manage_tasks`, tutoring requests, ops/health/digest requests, and internal Librarian/Researcher jobs.
+- **Authority Limits:** Does not narrate coding-agent MCP tool responses; no silent cross-bot handoff.
+- **Memory Scope:** Dedicated Main Agent working-memory peer only.
+- **Response Contract:** Markdown; concise for routine ops unless deeper detail is requested.
+- **Acceptance Scenario:** Cron digest runs without Discord; `@Main Agent` can complete Assistant and Tutor workloads.
 
-### 4.3 `Developer`
-- **Allowed Tools (target):** `generate_plan`, `execute_plan`, `push_plan_pr`.
-- **Authority Limits:** Mutates only inside isolated worktrees; `confirm_execute=true` and `confirm_push=true` mandatory.
+### 4.2 `Librarian` (job-backed)
+- **Purpose:** Codebase information authority for retrieval and citation workflows.
+- **Allowed Jobs:** `library_search`, `session_brief`, `knowledge_catalog`, `expand_citation`, `impact_map`.
+- **Authority Limits:** Read-only index authority; no Discord bot, tasks, tutoring, or mutation actions.
+- **Memory Scope:** Dedicated Librarian working-memory peer.
+- **Response Contract:** MCP envelope + compact citations.
 
-### 4.4 `Researcher`
-- **Allowed Tools (target):** `conduct_research`. Web search, doc fetch, and `/home/ubuntu/.hermes/research/<slug>.md` writes are internal to `conduct_research`.
-- **Authority Limits:** Markdown reports only; cannot edit codebases or system crons.
+### 4.3 `Researcher` (job-backed)
+- **Purpose:** External technical research evidence via MCP.
+- **Allowed Jobs:** `conduct_research` only.
+- **Authority Limits:** No Discord bot, no task/tutor/mutation capabilities.
+- **Memory Scope:** Dedicated Researcher working-memory peer.
+- **Response Contract:** MCP evidence schema with claim/source structure.
 
-### 4.5 `Assistant`
-- **Allowed Tools (target):** `manage_tasks`.
-- **Authority Limits:** Discord home channel only; sender must be in `DISCORD_ALLOWED_USERS`; `confirm_delete=true` for task deletions. Telegram is out of scope.
+### 4.4 `Assistant`
+- **Purpose:** Discord personal assistant for task capture, light digests, and concise cited support answers.
+- **Allowed Actions:** `manage_tasks` (delete requires `confirm_delete`), digest composition, internal Librarian/Researcher jobs.
+- **Authority Limits:** No deep-dive tutoring; no plan/execute/push mutation workflow.
+- **Memory Scope:** Dedicated Assistant working-memory peer.
+- **Response Contract:** Markdown with compact citations when evidence is used; concise by default.
 
-### 4.6 `Tutor`
-- **Allowed Tools (target):** `conduct_tutoring`, `library_search`.
-- **Authority Limits:** Educational guidance only; cannot mutate codebases or push PRs.
+### 4.5 `Tutor`
+- **Purpose:** Discord tutoring persona for deep-dive learning.
+- **Allowed Actions:** tutoring requests plus internal Librarian/Researcher jobs.
+- **Authority Limits:** No `manage_tasks`; no plan/execute/push mutation workflow.
+- **Defaults:** `detail_level=deep_dive`; `language=cantonese_english_terms`; deep-dive responses avoid summarization shortcuts.
+- **Memory Scope:** Dedicated Tutor working-memory peer.
+- **Response Contract:** Markdown with code/research citations when evidence is used.
 
 ---
 
-## 5. Proposed MCP Tool Surface Suite (V1 Target — Not Yet Present)
+## 5. Coding-agent MCP Surface (Information-only)
 
-> **Reader note:** None of these eight tool names exist today. Hermes v0.15.1 *does* ship MCP infrastructure (`mcp_serve.py`, `tools/registry.py`, ~20 files using `@mcp.tool`/`app.tool`) and 49 CLI subcommands (`mcp`, `tools`, `kanban`, `memory`, `skills`) — none match these names. The V1 build ticket must register these names on top of the existing MCP server.
+> **Reader note:** This section follows ADR 0001/0002/0003: coding-agent MCP is persona-agnostic and information-only. No `agent_query`, `generate_plan`, `execute_plan`, `push_plan_pr`, `conduct_tutoring`, or `manage_tasks` on this server.
+
+### 5.1 V1 MCP tools
 
 ```ts
 library_search(query: string, repos?: string[], revision?: string, limit?: number)
-generate_plan(task_description: string, repo: string, base_ref?: string)
-execute_plan(plan_id: string, repo: string, confirm_execute: boolean)
-push_plan_pr(plan_id: string, repo: string, branch: string, title: string, body: string, confirm_push: boolean)
-conduct_research(topic: string, sources?: string[], sensitivity?: "public" | "private")
-conduct_tutoring(subject: string, repo_url?: string, language?: string, detail_level?: "deep_dive" | "overview")
-manage_tasks(action: "list" | "add" | "complete" | "delete", task_id?: string, content?: string, confirm_delete?: boolean)
-agent_query(persona?: "Main Agent" | "Librarian" | "Developer" | "Researcher" | "Assistant" | "Tutor", prompt: string)
+session_brief(task: string, repos?: string[], focus?: "architecture" | "apis" | "tests" | "general")
+knowledge_catalog(repos?: string[])
+expand_citation(
+  repo: string,
+  revision: string,
+  path: string,
+  start_line: number,
+  end_line: number,
+  symbol?: string,
+  context_lines?: number
+)
+impact_map(
+  mode: "seed" | "intent",
+  repo?: string,
+  symbol?: string,
+  path?: string,
+  revision?: string,
+  intent?: string,
+  repos?: string[]
+)
+conduct_research(topic: string, sources?: string[], depth?: "quick" | "standard" | "deep")
 ```
 
-### Safety Confirmation Rule (target)
-- `confirm_execute: true` required for `execute_plan` to mutate a worktree.
-- `confirm_push: true` required for `push_plan_pr` to open a PR.
-- `confirm_delete: true` required for `manage_tasks(action="delete")`.
+### 5.2 Persona contract gate mapping
+
+- `library_search`, `session_brief`, `knowledge_catalog`, `expand_citation`, `impact_map` map to **Librarian** jobs.
+- `conduct_research` maps to **Researcher**.
+- Out-of-scope MCP asks return typed `mcp_oos` in the shared response envelope.
+- Optional operator-visible Main Agent escalation note is allowed for systemic repeated misuse; tool results are not silently rewritten.
+
+### 5.3 Safety and boundary rules
+
+- `manage_tasks` remains Discord-only.
+- `conduct_tutoring` remains Discord-only.
+- Plan/execute/push flow stays out of V1 persona roster and out of coding-agent MCP.
+- Discord wrong-bot requests return refuse + hint only; no auto-handoff.
 
 ---
 
