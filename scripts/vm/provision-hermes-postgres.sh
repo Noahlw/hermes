@@ -20,7 +20,8 @@ ROLE_INDEX="${HERMES_INDEX_ROLE:-codebase_index_app}"
 
 CONF_DIR="/etc/postgresql/16/main/conf.d"
 PORT_DROPIN="${CONF_DIR}/hermes-port.conf"
-HBA_DROPIN="/etc/postgresql/16/main/conf.d/hermes-pg_hba.conf"
+PG_HBA="/etc/postgresql/16/main/pg_hba.conf"
+HBA_MARKER="# Hermes Postgres (#47) - local trust for two DBs and their owning roles."
 
 log() { printf '[provision] %s\n' "$*"; }
 fail() { printf '[provision][FATAL] %s\n' "$*" >&2; exit 1; }
@@ -75,25 +76,34 @@ sudo -n chmod 0644 "${PORT_DROPIN}"
 log "wrote ${PORT_DROPIN}"
 
 # ---------------------------------------------------------------------------
-# Step 4: pg_hba via conf.d drop-in (included by default in 16/main)
+# Step 4: pg_hba — append trust lines for the two DBs.
+#
+# NOTE: `include_dir` only applies to postgresql.conf, not pg_hba.conf. The
+# plan called for a conf.d drop-in for pg_hba, but Ubuntu's pg_hba does not
+# auto-include conf.d files. We therefore append a marker + two host lines
+# to pg_hba.conf directly. Idempotent: marker gates re-append.
 # ---------------------------------------------------------------------------
 
-cat <<HBA | sudo -n tee "${HBA_DROPIN}" >/dev/null
-# Hermes Postgres (#47) — local trust for two DBs and their owning roles.
-# Drop-in included from the main pg_hba.conf on Ubuntu's postgresql-16 package.
-host    ${DB_HERMES},${DB_INDEX}    all             127.0.0.1/32            trust
-host    ${DB_HERMES},${DB_INDEX}    all             ::1/128                 trust
-HBA
-sudo -n chown postgres:postgres "${HBA_DROPIN}"
-sudo -n chmod 0644 "${HBA_DROPIN}"
-log "wrote ${HBA_DROPIN}"
+if sudo -n grep -qF "${HBA_MARKER}" "${PG_HBA}" 2>/dev/null; then
+    log "pg_hba trust lines already present (marker found)"
+else
+    log "appending Hermes trust lines to ${PG_HBA}"
+    {
+        printf '\n%s\n' "${HBA_MARKER}"
+        printf 'host    %s,%s    all             127.0.0.1/32            trust\n' \
+            "${DB_HERMES}" "${DB_INDEX}"
+        printf 'host    %s,%s    all             ::1/128                 trust\n' \
+            "${DB_HERMES}" "${DB_INDEX}"
+    } | sudo -n tee -a "${PG_HBA}" >/dev/null
+    sudo -n chown postgres:postgres "${PG_HBA}"
+    sudo -n chmod 0644 "${PG_HBA}"
+fi
 
 # Ensure local peer fallback exists for the unix socket (Ubuntu default file
 # already covers `postgres` peer; we add a generic `all` peer entry if absent).
-PG_HBA="/etc/postgresql/16/main/pg_hba.conf"
 if ! sudo -n grep -Eq '^local[[:space:]]+all[[:space:]]+all[[:space:]]+peer' "${PG_HBA}"; then
     log "appending local peer fallback to ${PG_HBA}"
-    printf '\n# Hermes (#47) — local socket peer fallback\nlocal   all             all                                     peer\n' \
+    printf '\n# Hermes (#47) - local socket peer fallback\nlocal   all             all                                     peer\n' \
         | sudo -n tee -a "${PG_HBA}" >/dev/null
     sudo -n chown postgres:postgres "${PG_HBA}"
 fi
