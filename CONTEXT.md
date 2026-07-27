@@ -74,18 +74,18 @@ _Avoid_: persona-private notes; mixing with Hermes operational tables; Qdrant-as
 
 ## Session brief
 
-A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and an explicit task seed (optional repo filters), not from peer-chat modeling alone.
+A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and an explicit task seed (optional repo filters and optional focus), not from peer-chat modeling alone.
 _Avoid_: dumping full chat history; uncited “what I remember” narratives as the brief; requiring Honcho preferences to build the V1 brief
 
 ## session_brief
 
-The MCP tool that produces a Session brief for the Mac coding agent. V1 input: task string plus optional repos; V1 corpus: codebase index only.
-_Avoid_: Honcho-only briefs; brief-with-no-task as the V1 default
+The MCP tool that produces a Session brief for the Mac coding agent. V1 input: required `task`; optional `repos[]`; optional `focus` (`architecture` | `apis` | `tests` | `general`, default `general`). V1 corpus: codebase index only. Start-work: deterministic retrieve/rank of anchors in code; MiniMax writes `{ brief_markdown, sections?: [{ title, bullets[] }] }` grounded in those hits, plus top-level `citations[]`.
+_Avoid_: Honcho-only briefs; brief-with-no-task as the V1 default; requiring revision on the V1 brief caller contract; MiniMax-planned retrieval for briefs; fully template-only briefs with no model narration
 
 ## conduct_research
 
-The MCP tool for external/technical research aimed at the Mac coding agent. V1 returns a structured evidence bundle (claims, sources, confidence) in the MCP response. Persisting Markdown under Hermes `research/` may be an internal archive side effect; callers must not depend on a VM path. Because Hermes is personal-use, V1 research from this tool is shared-eligible (no `sensitivity` private mode on the coding-agent MCP contract).
-_Avoid_: path-only research results; free-form essay with no evidence schema as the V1 contract; requiring a public|private sensitivity flag on V1 coding-agent research calls
+The MCP tool for external/technical research aimed at the Mac coding agent. Caller input: required `topic`; optional `sources[]` hints; optional `depth` (`quick` | `standard` | `deep`). Response `data`: `{ summary_markdown, claims: [{ claim, confidence, sources[] }], sources: [{ uri, title?, excerpt? }] }`. Start-work: hybrid — code does initial fetch from hints; MiniMax may request one follow-up fetch round for gaps, then fills the evidence schema. Persisting Markdown under Hermes `research/` may be an internal archive side effect; callers must not depend on a VM path. Because Hermes is personal-use, V1 research from this tool is shared-eligible (no `sensitivity` private mode on the coding-agent MCP contract).
+_Avoid_: path-only research results; free-form essay with no evidence schema as the V1 contract; requiring a public|private sensitivity flag on V1 coding-agent research calls; overloading the caller contract with question-type enums; unbounded MiniMax-driven web tool loops
 
 ## Working memory (V1)
 
@@ -141,25 +141,45 @@ _Avoid_: raw git navigate/blame/diff as peer MCP tools; splitting catalog and fr
 
 ## knowledge_catalog
 
-The MCP tool that lists what the codebase knowledge layer can see: indexed repositories and per-repo (or filtered) sync/freshness. One tool covers both inventory and trust signals.
-_Avoid_: separate list_indexed_repos and index_freshness tools in V1
+The MCP tool that lists what the codebase knowledge layer can see. Caller input: no required params; optional `repos[]` filter. Response `data`: `{ repos: [{ owner_name, default_branch, last_sync_at, sync_sha, status, stale }] }`. One tool covers both inventory and trust signals. Code-only — no MiniMax involvement.
+_Avoid_: separate list_indexed_repos and index_freshness tools in V1; requiring repo filters for every call; bulky per-repo index stats in the V1 contract; MiniMax health narratives on the catalog response
 
 ## library_search
 
-The single consumer-facing MCP read tool over the shared codebase knowledge layer. It returns a citation-backed synthesized answer plus short inline snippets for top hits. Path/symbol navigation, history, and diffs stay as internal index capabilities behind that tool — they are not separate V1 MCP tools.
-_Avoid_: split read suite (search / explain / navigate / history-diff) as peer MCP tools in V1; pointers-only answers with no snippets; always returning full hunks in search
+The single consumer-facing MCP read tool over the shared codebase knowledge layer. Caller input: required `query`; optional `repos[]`, `revision`, `limit` (default small, e.g. 5). Response `data`: `{ summary_markdown, hits: [{ citation, snippet, score? }] }` plus top-level deduped `citations[]` in the MCP response envelope. Path/symbol navigation, history, and diffs stay as internal index capabilities behind that tool — they are not separate V1 MCP tools.
+_Avoid_: split read suite (search / explain / navigate / history-diff) as peer MCP tools in V1; pointers-only answers with no snippets; always returning full hunks in search; synthesized vs hits_only modes on the V1 caller contract; hits-only with no summary_markdown
 
 ## expand_citation
 
-The MCP tool that materializes a wider or full code hunk from a citation returned by `library_search` (or another Hermes tool). Used when short inline snippets are not enough.
-_Avoid_: replacing library_search; exposing raw path browse as a general file API
+The MCP tool that materializes a wider or full code hunk from a citation. Caller input: required citation tuple fields (`repo`, `revision`, `path`, `start_line`, `end_line`); optional `symbol`; optional `context_lines` (default e.g. 10) to widen the window. No MiniMax involvement — purely deterministic code fetch. No whole-file fetch or opaque citation ID.
+_Avoid_: replacing library_search; exposing raw path browse as a general file API; opaque citation_id as the only input; whole-file dumps
 
 ## impact_map
 
-The MCP tool that returns a ranked cross-repo blast radius of related files/symbols from the codebase index. V1 accepts a structured seed (`repo` plus `symbol` or `path`, optional `revision`) as the preferred path, and also allows a natural-language change-intent mode when the Mac agent has not yet pinned a symbol/path.
-_Avoid_: treating impact_map as generate_plan; NL intent as a substitute for an implementation plan artifact
+The MCP tool that returns a ranked cross-repo blast radius of related files/symbols from the codebase index. Caller input is a discriminated union: `{ mode: "seed", repo, symbol? | path?, revision? }` or `{ mode: "intent", intent: string, repos?: string[] }`. Start-work: code resolves seed (or bounded intent→seed lookup), then deterministic fan-out; MiniMax only writes optional `summary_markdown` from supplied nodes. Response `data`: `{ seed, nodes: [{ citation, relation, score? }], summary_markdown? }` plus top-level `citations[]`.
+_Avoid_: treating impact_map as generate_plan; NL intent as a substitute for an implementation plan artifact; flat optional fields with inferred mode; MiniMax-invented blast-radius edges
 
 ## Structured tool environment
 
 The fixed schemas, prompts, and authority checks around each MCP tool that steer MiniMax-M3 toward reliable output. V1 prefers strong contracts and guided backends over free-form routing the model must invent mid-call.
 _Avoid_: underspecified mega-prompts; relying on the model to invent tool steps without schema guidance
+
+## library_search start-work
+
+For `library_search`, Hermes runs deterministic retrieve/rank/dedupe in code, then MiniMax-M3 only writes `summary_markdown` grounded in the supplied hits. The model does not choose retrieval steps.
+_Avoid_: letting MiniMax invent the retrieval plan; summarizing without hit grounding
+
+## MCP response envelope
+
+The common JSON shape returned by every V1 coding-agent MCP tool: structured fields such as `ok`, `tool`, `data`, optional `citations` / `warnings` / `errors`, with Markdown only inside string fields when prose is needed — not Markdown-first tool replies.
+_Avoid_: Markdown-only tool responses; per-tool hybrid envelopes (JSON for some tools, essay for others)
+
+## Citation tuple
+
+The shared code-anchor object across coding-agent MCP tools: `repo`, `revision` (commit-ish), `path`, `start_line`, `end_line` (1-based inclusive), and optional `symbol`. Snippets are not required on the tuple; wider hunks come from `expand_citation`.
+_Avoid_: URI-only citation strings as the sole contract; requiring `snippet` on every citation
+
+## MCP failure policy
+
+Shared outcome rules for coding-agent MCP tools: missing/unavailable index → hard fail (`ok: false`, typed error); stale index → soft warn and proceed; empty-but-valid result → `ok: true` with empty `data`.
+_Avoid_: treating empty search hits as errors; treating all staleness as hard failure; returning partial data when the index is unavailable
