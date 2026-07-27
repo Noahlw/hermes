@@ -2,17 +2,22 @@
 
 ## Persona
 
-A distinct Hermes operating identity for a recurring kind of work. Each persona is an independently callable subagent with its own purpose, tools, authority, memory scope, and response contract. It is not merely a prompt variation.
+A distinct Hermes operating identity for a recurring kind of work. Each persona has its own purpose, tools, authority, memory scope, and response contract. It is not merely a prompt variation. In V1, which personas are *callable* vs *job-backed* is defined by the entrypoint model (see Persona selection).
 
-The exact persona set and the boundaries between personas remain to be decided during the planning interview.
+## Job-backed persona
+
+A persona that is not reached by its own entrypoint. Hermes applies its contract when a matching job runs (e.g. Librarian for codebase-info MCP tools; Researcher for `conduct_research`). Callers do not select it.
+_Avoid_: treating job-backed personas as chat-selectable identities; requiring `agent_query(persona=…)` to use their tools
 
 ## Persona selection
 
-Callers select a persona explicitly when they need specialized behavior. If no persona is selected, Hermes falls back to the Main Agent.
+V1 selects personas by **entrypoint**, not by a caller-supplied persona parameter on the coding-agent MCP. Discord home channel → Assistant; tutoring entrypoint → Tutor; cron/ops → Main Agent. Coding-agent MCP tools are persona-agnostic (no `persona` field, no `agent_query`). Librarian and Researcher attach via job-backed contracts, not selection.
+_Avoid_: persona param on every MCP tool; resurrecting `agent_query` on the coding-agent MCP; Telegram as an Assistant entrypoint
 
 ## Main Agent
 
-The default Hermes operating identity used when a caller does not choose a specialized persona. It is a full general-purpose persona that can handle ordinary work itself and delegate when specialization is useful.
+The V1 ops and escalation persona. Owns cron/health digests, system-monitoring summaries, and operator-facing housekeeping. It is the only escalation sink for Assistant, Tutor, and job-backed personas. It does not own Discord chat and does not answer coding-agent MCP calls (those tools apply Librarian/Researcher contracts directly).
+_Avoid_: Main Agent as Discord chat owner; Main Agent as coding-agent MCP narrator; treating Main Agent as a general grab-bag for every unmatched request
 
 ## Persona delegation
 
@@ -24,9 +29,13 @@ Each persona has isolated working memory for its own preferences, reasoning cont
 
 ## V1 persona set
 
-V1 ships with a fixed, deliberate set of personas discovered during use-case research, plus the Main Agent. User-created personas are outside the V1 boundary.
+V1 ships five fixed personas: **Main Agent**, **Librarian**, **Researcher**, **Assistant**, and **Tutor**. User-created personas are outside the V1 boundary. **Developer** is out of V1 — no implementor persona while the coding-agent MCP is information-only (#42).
 
-`Librarian`, `Developer`, and `Researcher` are starting hypotheses, not commitments. Use-case research may confirm, split, merge, or replace them.
+**Librarian** and **Researcher** are **job-backed contracts**: named personas with purpose, authority, isolated working memory, and response rules applied when their jobs run. They are not independently callable and have no dedicated chat entrypoint.
+
+**Librarian jobs (V1):** `library_search`, `session_brief`, `knowledge_catalog`, `expand_citation`, `impact_map`.  
+**Researcher jobs (V1):** `conduct_research` only.
+_Avoid_: Developer as a V1 persona; treating the #39 six-persona draft as still binding; user-created personas in V1; external caller selection of Librarian/Researcher; inventing Discord/MCP entrypoints just to “reach” them; assigning session_brief or impact_map to Main Agent
 
 ## Hermes V1 planning destination
 
@@ -42,7 +51,8 @@ A source-managed definition for one persona. It states the persona's purpose, al
 
 A specialized persona must not silently act beyond its contract. When a request exceeds its authority, it returns an explicit out-of-scope result and may escalate to the Main Agent.
 
-When a caller explicitly selects a specialist and that specialist cannot handle the request, escalation goes only to the Main Agent; Hermes does not silently switch to another specialist.
+Entrypoint personas (Assistant, Tutor) escalate only to the Main Agent — Hermes does not silently switch to another specialist. Job-backed tools return out-of-scope to the MCP caller; optional operator-visible escalation to Main Agent is allowed when the contract says so.
+_Avoid_: silent specialist-to-specialist handoff; Main Agent silently rewriting an MCP tool response as if it were the tool
 
 ## MiniMax-only
 
@@ -111,8 +121,13 @@ For use-case research tickets: close after the accepted spec is written **and** 
 
 ## Portable restore
 
-The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres; secrets via a separate encrypted/offline path.
-_Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting `.env`/tokens in the public repo or unencrypted Drive
+The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres. Secrets travel as an **encrypted archive on Drive**; a separate **unlock key file** (never uploaded to Drive) is required to decrypt. On restore, the operator points the agent or restore script at that key file.
+_Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting plaintext `.env`/tokens in the public repo or unencrypted on Drive; storing the unlock key on Drive
+
+## Unlock key file
+
+A generated **`age` identity** (private key file) that decrypts the Drive-stored encrypted secrets archive. It is kept offline / off-Drive; the operator supplies its path when importing secrets onto a new machine. Contents of the archive: minimal Hermes runtime secrets (`.env` / token export + rclone config as needed).
+_Avoid_: embedding the key in the Drive archive; committing the key to git; using a Drive-stored passphrase as the only secret; stuffing full `~/.hermes/` into the archive
 
 ## Schema migrations (Hermes)
 
