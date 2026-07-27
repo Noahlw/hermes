@@ -27,11 +27,11 @@ bad() { RESULTS["$1"]="FAIL"; printf '%s:FAIL\n' "$1"; FAILED_KEYS+=("$1"); }
 
 run_hermes() {
     PGPORT="$PGPORT" PGHOST="$PGHOST" PGUSER="$USER_HERMES" \
-        psql -v ON_ERROR_STOP=1 -X -tA "$DB_HERMES" "$@"
+        psql -v ON_ERROR_STOP=1 -X -q -tA "$DB_HERMES" "$@"
 }
 run_index() {
     PGPORT="$PGPORT" PGHOST="$PGHOST" PGUSER="$USER_INDEX" \
-        psql -v ON_ERROR_STOP=1 -X -tA "$DB_INDEX" "$@"
+        psql -v ON_ERROR_STOP=1 -X -q -tA "$DB_INDEX" "$@"
 }
 
 # ---- a: connect hermes ----------------------------------------------------
@@ -41,7 +41,7 @@ if run_hermes -c 'select 1' >/dev/null 2>&1; then ok a; else bad a; fi
 if run_index -c 'select 1' >/dev/null 2>&1; then ok b; else bad b; fi
 
 # ---- c: audit_events insert + select -------------------------------------
-C_OUT="$(run_hermes <<SQL
+C_OUT="$(run_hermes <<SQL | head -n1
 INSERT INTO audit_events (occurred_at, actor, action, payload, provenance)
 VALUES (now(), 'smoke', 'smoke.test', jsonb_build_object('probe','$PROBE_ID'),
         jsonb_build_object('script','smoke-hermes-postgres.sh'))
@@ -56,7 +56,7 @@ else
 fi
 
 # ---- d: research_evidence insert + select --------------------------------
-D_OUT="$(run_hermes <<SQL
+D_OUT="$(run_hermes <<SQL | head -n1
 INSERT INTO research_evidence
     (topic, claim, source_uri, retrieved_at, excerpt, excerpt_hash, confidence, sensitivity)
 VALUES ('smoke', 'smoke claim $PROBE_ID',
@@ -75,7 +75,7 @@ else
 fi
 
 # ---- e: digest_allowlists tech_news --------------------------------------
-E_OUT="$(run_hermes <<SQL
+E_OUT="$(run_hermes <<SQL | head -n1
 INSERT INTO digest_allowlists (topic, enabled, config)
 VALUES ('tech_news', false, jsonb_build_object('probe','$PROBE_ID'))
 ON CONFLICT (topic) DO UPDATE SET enabled = EXCLUDED.enabled,
@@ -85,10 +85,10 @@ SQL
 )"
 run_hermes -c "UPDATE digest_allowlists SET enabled=true WHERE id=$E_OUT" >/dev/null 2>&1
 ENABLED="$(run_hermes -c "SELECT enabled::text FROM digest_allowlists WHERE topic='tech_news';")"
-if [[ "$ENABLED" == "t" ]]; then ok e; else bad e; fi
+if [[ "$ENABLED" == "t" || "$ENABLED" == "true" ]]; then ok e; else bad e; fi
 
 # ---- f: repos insert -----------------------------------------------------
-F_OUT="$(run_index <<SQL
+F_OUT="$(run_index <<SQL | head -n1
 INSERT INTO repos (owner_name, default_branch)
 VALUES ('acme/widget', 'main')
 ON CONFLICT (owner_name) DO UPDATE SET default_branch = EXCLUDED.default_branch
@@ -98,7 +98,7 @@ SQL
 if [[ "$F_OUT" =~ ^[0-9]+$ ]]; then ok f; else bad f; fi
 
 # ---- g: files insert -----------------------------------------------------
-G_OUT="$(run_index <<SQL
+G_OUT="$(run_index <<SQL | head -n1
 INSERT INTO files (repo_id, path, commit_sha)
 VALUES ($F_OUT, 'README.md', 'abc123')
 ON CONFLICT (repo_id, commit_sha, path) DO UPDATE SET path = EXCLUDED.path
@@ -108,7 +108,7 @@ SQL
 if [[ "$G_OUT" =~ ^[0-9]+$ ]]; then ok g; else bad g; fi
 
 # ---- h: chunks insert + FTS ----------------------------------------------
-H_OUT="$(run_index <<SQL
+H_OUT="$(run_index <<SQL | head -n1
 INSERT INTO chunks (file_id, chunk_index, content, content_sha)
 VALUES ($G_OUT, 1, 'Postgres is a powerful relational database.',
         '$PROBE_ID')
@@ -127,7 +127,7 @@ fi
 # ---- i: chunk_embeddings 768-dim zero vector -----------------------------
 run_index -c "DELETE FROM chunk_embeddings WHERE chunk_id=$H_OUT;" >/dev/null 2>&1
 ZERO_VECTOR="$(printf '0,%.0s' {1..767}; printf '0')"
-I_OUT="$(run_index <<SQL
+I_OUT="$(run_index <<SQL | head -n1
 INSERT INTO chunk_embeddings (chunk_id, model, dims, embedding, content_sha)
 VALUES ($H_OUT, 'nomic-embed-text', 768,
         string_to_array('$ZERO_VECTOR', ',')::real[],
