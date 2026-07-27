@@ -84,8 +84,8 @@ _Avoid_: Honcho-only briefs; brief-with-no-task as the V1 default
 
 ## conduct_research
 
-The MCP tool for external/technical research aimed at the Mac coding agent. V1 returns a structured evidence bundle (claims, sources, confidence) in the MCP response. Persisting Markdown under Hermes `research/` may be an internal archive side effect; callers must not depend on a VM path.
-_Avoid_: path-only research results; free-form essay with no evidence schema as the V1 contract
+The MCP tool for external/technical research aimed at the Mac coding agent. V1 returns a structured evidence bundle (claims, sources, confidence) in the MCP response. Persisting Markdown under Hermes `research/` may be an internal archive side effect; callers must not depend on a VM path. Because Hermes is personal-use, V1 research from this tool is shared-eligible (no `sensitivity` private mode on the coding-agent MCP contract).
+_Avoid_: path-only research results; free-form essay with no evidence schema as the V1 contract; requiring a public|private sensitivity flag on V1 coding-agent research calls
 
 ## Working memory (V1)
 
@@ -121,8 +121,8 @@ _Avoid_: one-shot undocumented bootstrap; coupling V1 schema to upstream hermes-
 
 ## MCP tool surface
 
-The set of named MCP tools Hermes exposes to coding agents and other Tailscale consumers. V1 uses an explicit suite of tools, each with its own input/output contract and authority boundary — not a single routing primitive.
-_Avoid_: one mega-tool as the only surface; collapsing authority into free-form prompt text
+The set of named MCP tools Hermes exposes to coding agents and other Tailscale consumers. V1 uses an explicit suite of tools, each with its own input/output contract and authority boundary — not a single routing primitive. The V1 Tailscale MCP server registers the coding-agent information suite only; Discord Assistant, Tutor, and operator/cron stay on non-MCP entrypoints.
+_Avoid_: one mega-tool as the only surface; collapsing authority into free-form prompt text; registering manage_tasks / conduct_tutoring / plan-execute tools on the V1 coding-agent MCP server
 
 ## Information provider
 
@@ -134,9 +134,9 @@ _Avoid_: generate_plan / execute_plan / push_plan_pr as core V1 MCP tools; “He
 The three jobs a Mac coding agent may call Hermes MCP for in V1: cross-repo retrieval (R), session/task brief (B), and external research (X). Tutor, personal Discord tasks, and operator/VM status are not part of this coding-agent MCP job set.
 _Avoid_: packing plan/execute/push into this job set; treating Discord task capture as a Mac-agent MCP job
 
-## Coding-agent MCP suite (V1 draft)
+## Coding-agent MCP suite (V1)
 
-Named consumer tools for the Mac coding agent: `library_search` (R), `session_brief` (B), `conduct_research` (X), `knowledge_catalog` (indexed repos + freshness in one response), `expand_citation`, and `impact_map`. Still information-only; no plan/execute/push tools. No `agent_query` mega-router on this consumer surface — the Mac agent calls named tools only.
+Named consumer tools for the Mac coding agent: `library_search` (R), `session_brief` (B), `conduct_research` (X), `knowledge_catalog` (indexed repos + freshness in one response), `expand_citation`, and `impact_map`. Information-only; no plan/execute/push tools. No `agent_query` mega-router — the Mac agent calls named tools only. Per-tool invocation and MiniMax start-work contracts live in #49.
 _Avoid_: raw git navigate/blame/diff as peer MCP tools; splitting catalog and freshness into two MCP tools; merging all six into one job-enum mega-tool; agent_query as the coding-agent entrypoint
 
 ## knowledge_catalog
