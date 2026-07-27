@@ -4,7 +4,12 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from .contract_gate import Decision, decide_discord_action, decide_mcp_tool
+from .contract_gate import (
+    Decision,
+    decide_discord_action,
+    decide_mcp_tool,
+    load_contracts,
+)
 
 _TUTORING_INTENT = re.compile(
     r"\b(teach|tutor(?:ing)?|explain|deep[\s-]?dive|lesson)\b",
@@ -17,6 +22,11 @@ _TASK_MANAGEMENT = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_DELETE_INTENT = re.compile(
+    r"\bdelete\s+(?:my\s+|a\s+|the\s+|this\s+|these\s+|those\s+|all\s+|every\s+|completed\s+)?(?:tasks?|todos?)\b"
+    r"|\b(?:remove|wipe|clear|destroy)\s+(?:my\s+|a\s+|the\s+|this\s+|these\s+|those\s+|all\s+|every\s+|completed\s+)?(?:tasks?|todos?)\b",
+    re.IGNORECASE,
+)
 _TASK_WORD = re.compile(r"\b(tasks?|todos?)\b", re.IGNORECASE)
 
 
@@ -24,8 +34,9 @@ _TASK_WORD = re.compile(r"\b(tasks?|todos?)\b", re.IGNORECASE)
 class DiscordMessage:
     channel_id: str
     author_id: str
-    mentions: list[str]
+    mentions: tuple[str, ...]
     content: str
+    confirm_delete: bool = False
 
 
 @dataclass(frozen=True)
@@ -35,6 +46,7 @@ class DiscordRoute:
     decision: Decision | None = None
     reason: str | None = None
     hint_persona: str | None = None
+    confirm_required: bool = False
 
 
 def _infer_action(persona_id: str, content: str) -> str:
@@ -69,6 +81,23 @@ def route_discord_message(
 
     persona_id = message.mentions[0].strip().lower()
     action = _infer_action(persona_id, message.content)
+
+    # confirm_delete check: only applies to personas that actually have
+    # manage_tasks in their contract.  For personas where the action is
+    # itself out of scope (e.g. Tutor asked to delete tasks), the gate
+    # refusal takes precedence.
+    contracts = load_contracts()
+    persona_allowed = contracts.persona_actions.get(persona_id, frozenset())
+    can_manage_tasks = "manage_tasks" in persona_allowed
+    if can_manage_tasks and action == "manage_tasks" and _DELETE_INTENT.search(message.content) and not message.confirm_delete:
+            return DiscordRoute(
+                ignored=False,
+                persona_id=persona_id,
+                decision=Decision.REFUSE_DISCORD,
+                reason="task deletion requires confirm_delete=True",
+                confirm_required=True,
+            )
+
     result = decide_discord_action(persona_id, action)
     return DiscordRoute(
         ignored=False,
@@ -79,12 +108,26 @@ def route_discord_message(
     )
 
 
+def _resolve_job_persona(tool_name: str) -> str | None:
+    """Map an MCP tool name to its owning job-backed persona."""
+    # Normalize the same way decide_mcp_tool() does so the gate's
+    # uppercase/whitespace tolerance lines up with the dispatch lookup.
+    normalized = tool_name.strip().lower()
+    contracts = load_contracts()
+    if normalized in contracts.librarian_jobs:
+        return "librarian"
+    if normalized in contracts.researcher_jobs:
+        return "researcher"
+    return None
+
+
 def route_mcp_tool(tool_name: str, misuse_count: int = 0) -> dict[str, Any]:
     result = decide_mcp_tool(tool_name, misuse_count=misuse_count)
     if result.decision == Decision.ALLOW:
         return {
             "ok": True,
             "tool": tool_name,
+            "job_persona": _resolve_job_persona(tool_name),
             "data": {},
             "warnings": [],
             "errors": [],
