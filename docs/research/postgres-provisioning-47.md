@@ -25,6 +25,9 @@
 
 | Item | State |
 |---|---|
-| Honcho Postgres | `pgvector/pgvector:pg15` on `127.0.0.1:5432` — leave alone |
-| Hermes DB config | No `hermes_db` / `codebase_index_db` keys in `config.yaml` yet |
+| Honcho Postgres | `pgvector/pgvector:pg15` on `127.0.0.1:5432` — unchanged (port :5433 chosen to avoid collision) |
+| Hermes Postgres | systemd `postgresql-16` + `postgresql-16-pgvector` (apt) on `127.0.0.1:5433` — **live since 2026-07-27T05:36Z**. Two DBs: `hermes` (owner `hermes_app`) and `codebase_index` (owner `codebase_index_app`). `vector` extension installed on `codebase_index`. V1 schema applied via `db/migrate.sh all`; smoke probe rows left behind: `audit_events` (id 1, actor='smoke', action='smoke.test'), `research_evidence` (id 1, topic='smoke', claim='smoke claim smoke-…'), `digest_allowlists` (topic='tech_news', enabled=true), `repos` (id 1, owner_name='acme/widget'), `files` (id 1, path='README.md'), `chunks` (id 1, content='Postgres is a powerful relational database.', FTS match), `chunk_embeddings` (chunk_id 1, model='nomic-embed-text', dims=768, zero-vector). Honcho `:5432` still listening. |
+| Hermes config wiring | `~/.hermes/config.yaml` `databases:` block added (hermes + codebase_index → `127.0.0.1:5433` with respective owners). Backup: `config.yaml.bak.20260727T054346Z`. No other keys touched. |
 | Disk | ~104 GB free on `/` |
+
+Verified 2026-07-27 UTC by smoke `6c4e258` — `ALL_PASS` (a–l).

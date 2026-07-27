@@ -218,9 +218,10 @@ agent_query(persona?: "Main Agent" | "Librarian" | "Developer" | "Researcher" | 
 |---|---|---|---|
 | **Qdrant** | Docker `qdrant_mem0` | Up 7 weeks; 127.0.0.1:6333/6334; collections `mem0`, `mem0_nomic`, `mem0migrations`, `terraforming` | MEM-7 uninstall (hybrid close 2026-07-27) |
 | **mem0** | `~/.hermes/mem0.json` (thin: `user_id`/`agent_id`/`rerank`) | Backed by `qdrant_mem0` | MEM-7 uninstall (hybrid close 2026-07-27) |
-| **Honcho** | Docker compose (api/deriver/redis/pgvector) | Up 8 weeks; 127.0.0.1:8000 | MEM-2 retained as V1 working-memory provider |
+| **Honcho** | Docker compose (api/deriver/redis/pgvector) | Up 8 weeks; 127.0.0.1:8000; Postgres on `127.0.0.1:5432` (untouched by #47) | MEM-2 retained as V1 working-memory provider |
 | **neo4j** | Docker `neo4j` | Up 7 weeks; 7474/7687; 2026.04.0 community | MEM-5 uninstall (hybrid close 2026-07-27) |
 | **agentmemory** | systemd `agentmemory.service` + `iii` | Active; ports 3111/3112/49134 (+ health on 8642-adjacent path) | **D-MEM-3: uninstall entirely before #39 closes** |
+| **Hermes Postgres** | systemd `postgresql-16` + `postgresql-16-pgvector` (apt) | Live on `127.0.0.1:5433` since 2026-07-27; two DBs (`hermes`, `codebase_index`) with dedicated LOGIN owners (`hermes_app`, `codebase_index_app`); pgvector extension enabled on `codebase_index`; V1 schema migrated (`0001_init.sql` for both DBs). Honcho's `:5432` untouched. | **#47 landed — MEM-3/MEM-4 carrier; not a V1 memory service in itself, but the substrate for the codebase index (#40) and Hermes audit/research/session/digest tables (#6.5, §10)** |
 
 **Not memory — local inference (do not treat as memory stack):**
 
