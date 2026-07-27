@@ -117,6 +117,36 @@ class PersonaAdapterTests(unittest.TestCase):
         self.assertEqual(result.decision.value, "refuse_discord")
         self.assertEqual(result.hint_persona, "assistant")
 
+    def test_tutor_refuses_list_my_tasks_phrasing(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["tutor"],
+            content="list my tasks",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "refuse_discord")
+        self.assertEqual(result.hint_persona, "assistant")
+
+    def test_assistant_teach_about_todos_refuses_with_tutor_hint(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["assistant"],
+            content="teach me about todos",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "refuse_discord")
+        self.assertEqual(result.hint_persona, "tutor")
+
     def test_assistant_teach_about_tasks_refuses_with_tutor_hint(self) -> None:
         message = DiscordMessage(
             channel_id="chan-1",

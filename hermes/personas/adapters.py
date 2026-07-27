@@ -12,13 +12,12 @@ _TUTORING_INTENT = re.compile(
 )
 _TASK_MANAGEMENT = re.compile(
     r"\b("
-    r"(?:add|list|complete|delete|manage)\s+tasks?"
+    r"(?:add|list|complete|delete|manage)\s+(?:my\s+|a\s+|the\s+)?tasks?"
     r"|tasks?\s*:"
-    r"|todo(?:s)?"
     r")\b",
     re.IGNORECASE,
 )
-_TASK_WORD = re.compile(r"\btasks?\b", re.IGNORECASE)
+_TASK_WORD = re.compile(r"\b(tasks?|todos?)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -40,15 +39,16 @@ class DiscordRoute:
 
 def _infer_action(persona_id: str, content: str) -> str:
     # Precedence:
-    # 1) explicit task-management phrasing (so Tutor can refuse + hint)
-    # 2) Tutor bot identity / tutoring intent
-    # 3) bare "task(s)" word for Assistant-style routing
-    # 4) default digest
+    # 1) tutoring intent (so "teach me about todos/tasks" refuses on Assistant)
+    # 2) explicit task-management phrasing (so Tutor can refuse + hint)
+    # 3) Tutor bot identity default
+    # 4) bare task/todo word for Assistant-style routing
+    # 5) default digest
+    if _TUTORING_INTENT.search(content):
+        return "conduct_tutoring"
     if _TASK_MANAGEMENT.search(content):
         return "manage_tasks"
     if persona_id == "tutor":
-        return "conduct_tutoring"
-    if _TUTORING_INTENT.search(content):
         return "conduct_tutoring"
     if _TASK_WORD.search(content):
         return "manage_tasks"
