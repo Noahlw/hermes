@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
 from .contract_gate import Decision, decide_discord_action, decide_mcp_tool
+
+_TUTORING_INTENT = re.compile(
+    r"\b(teach|tutor(?:ing)?|explain|deep[\s-]?dive|lesson)\b",
+    re.IGNORECASE,
+)
+_TASK_MANAGEMENT = re.compile(
+    r"\b("
+    r"(?:add|list|complete|delete|manage)\s+tasks?"
+    r"|tasks?\s*:"
+    r"|todo(?:s)?"
+    r")\b",
+    re.IGNORECASE,
+)
+_TASK_WORD = re.compile(r"\btasks?\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -24,13 +39,13 @@ class DiscordRoute:
 
 
 def _infer_action(persona_id: str, content: str) -> str:
-    normalized = content.lower()
-    if "task" in normalized:
-        return "manage_tasks"
+    # Precedence: bot identity / tutoring intent beat bare "task" topic words.
     if persona_id == "tutor":
         return "conduct_tutoring"
-    if "tutor" in normalized or "teach" in normalized:
+    if _TUTORING_INTENT.search(content):
         return "conduct_tutoring"
+    if _TASK_MANAGEMENT.search(content) or _TASK_WORD.search(content):
+        return "manage_tasks"
     return "compose_digest"
 
 

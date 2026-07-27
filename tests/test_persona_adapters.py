@@ -87,6 +87,50 @@ class PersonaAdapterTests(unittest.TestCase):
         self.assertEqual(result.decision.value, "refuse_discord")
         self.assertEqual(result.hint_persona, "tutor")
 
+    def test_tutor_allows_prompts_that_mention_task_topic(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["tutor"],
+            content="explain task decomposition in LangGraph step by step",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "allow")
+        self.assertIsNone(result.hint_persona)
+
+    def test_assistant_teach_about_tasks_refuses_with_tutor_hint(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["assistant"],
+            content="teach me about task queues",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "refuse_discord")
+        self.assertEqual(result.hint_persona, "tutor")
+
+    def test_assistant_still_routes_explicit_task_management(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["assistant"],
+            content="add task: buy coffee",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "allow")
+
     def test_mcp_route_has_typed_oos(self) -> None:
         result = route_mcp_tool("manage_tasks")
         self.assertEqual(result["ok"], False)
