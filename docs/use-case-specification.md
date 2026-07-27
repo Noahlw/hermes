@@ -216,10 +216,10 @@ agent_query(persona?: "Main Agent" | "Librarian" | "Developer" | "Researcher" | 
 
 | Component | How | State | #39 stance |
 |---|---|---|---|
-| **Qdrant** | Docker `qdrant_mem0` | Up 7 weeks; 127.0.0.1:6333/6334; collections `mem0`, `mem0_nomic`, `mem0migrations`, `terraforming` | Observed; fate deferred to #41 |
-| **mem0** | `~/.hermes/mem0.json` (thin: `user_id`/`agent_id`/`rerank`) | Backed by `qdrant_mem0` | Observed; fate deferred to #41 |
-| **Honcho** | Docker compose (api/deriver/redis/pgvector) | Up 8 weeks; 127.0.0.1:8000 | Observed; fate deferred to #41 |
-| **neo4j** | Docker `neo4j` | Up 7 weeks; 7474/7687; 2026.04.0 community | Observed; fate deferred to #41 |
+| **Qdrant** | Docker `qdrant_mem0` | Up 7 weeks; 127.0.0.1:6333/6334; collections `mem0`, `mem0_nomic`, `mem0migrations`, `terraforming` | MEM-7 uninstall (hybrid close 2026-07-27) |
+| **mem0** | `~/.hermes/mem0.json` (thin: `user_id`/`agent_id`/`rerank`) | Backed by `qdrant_mem0` | MEM-7 uninstall (hybrid close 2026-07-27) |
+| **Honcho** | Docker compose (api/deriver/redis/pgvector) | Up 8 weeks; 127.0.0.1:8000 | MEM-2 retained as V1 working-memory provider |
+| **neo4j** | Docker `neo4j` | Up 7 weeks; 7474/7687; 2026.04.0 community | MEM-5 uninstall (hybrid close 2026-07-27) |
 | **agentmemory** | systemd `agentmemory.service` + `iii` | Active; ports 3111/3112/49134 (+ health on 8642-adjacent path) | **D-MEM-3: uninstall entirely before #39 closes** |
 
 **Not memory — local inference (do not treat as memory stack):**
@@ -349,4 +349,4 @@ Tailscale-only UFW allows the 3000-range AgentMemory ports; port 8642 has direct
 8. **D-CRON-1** `weekly-workspace-cleanup` 401 (`****f14d`) — triage as separate ops ticket; §1.4 “working” stays qualified until fixed.
 9. **D-CRON-2** Empty `kanban.db` — non-blocking note.
 10. **DIR-9/UC-1** Create `/home/ubuntu/.hermes/worktrees/` and `research/` — V1 build / ops follow-up.
-11. **MEM-2 / memory-stack cleanup** — `DEFERRED to #41`. Ollama is inference, not memory.
+11. **MEM-2 / memory-stack cleanup** — RESOLVED by #41 MEM-1…8 hybrid close; follow-ups (Postgres provisioning, Drive portable restore) tracked separately.

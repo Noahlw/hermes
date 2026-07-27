@@ -59,8 +59,33 @@ The single Discord channel Hermes monitors for Assistant note capture and task d
 
 ## Memory stack (V1)
 
-The set of services that persist and retrieve persona/shared knowledge. Candidates currently observed on the VM include Qdrant, mem0, Honcho, and neo4j. Which (if any) survive is decided by research ticket #41, not by the use-case spec.
-_Avoid_: treating Ollama as a memory service; treating agentmemory as in-scope for V1 (it is being uninstalled)
+The set of services that persist and retrieve persona/shared knowledge. Under **MEM-1**, Hermes owns canonical truth in a **Hermes database**; processed repository knowledge lives in a separate **codebase index database**. Honcho provides personal working memory. Mem0, standalone Qdrant, agentmemory, and neo4j are out of V1.
+_Avoid_: one combined DB for Hermes ops and repo wiki; treating Ollama as memory; Mem0/Qdrant/agentmemory/neo4j as V1 memory
+
+## Hermes database
+
+Durable Postgres store for Hermes itself: canonical records, audit/events, research evidence, persona/task scope metadata, session-brief pointers, structured digests/allowlists (not codebase chunks; not Honcho’s peer graph).
+_Avoid_: storing full repo indexes here; peer-chat wiki as SoT; SQLite as the V1 Hermes canonical engine
+
+## Codebase index database
+
+Durable Postgres store (+ pgvector + FTS) for processed coding repositories: commit-addressable paths, symbols, chunks, lexical + semantic retrieval over the #40 knowledge layer. Read by all personas; writable only through controlled ingestion.
+_Avoid_: persona-private notes; mixing with Hermes operational tables; Qdrant-as-sole code SoT
+
+## Session brief
+
+A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and task memory, not from peer-chat modeling alone.
+_Avoid_: dumping full chat history; uncited “what I remember” narratives as the brief
+
+## Working memory (V1)
+
+Persona-private task state, chat-derived preferences, and cross-session interaction context. In V1 this role is filled by Honcho (peer/session representations), not Mem0. It is not the source of truth for codebase or research facts.
+_Avoid_: Mem0 as required V1 working-memory SoT; conflating working memory with the shared knowledge layer or codebase index
+
+## Personal advisor (V1)
+
+Assistant workload beyond Discord task capture: topic digests (tech, AI, other fields, stocks-related news) and eventual email-reading help. Continuity and preferences live in working memory (Honcho); structured digest artifacts and allowlists live in the Hermes database.
+_Avoid_: stuffing news corpora into Honcho as a wiki; treating PopIdea (#46) as required for this V1 surface
 
 ## Local inference
 
@@ -73,3 +98,8 @@ Services intentionally reachable on the Tailscale mesh (not the public internet)
 ## Hybrid close
 
 For use-case research tickets: close after the accepted spec is written **and** a short list of live VM hardening checks pass; remaining ops may follow as separate tickets.
+
+## Portable restore
+
+The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres; secrets via a separate encrypted/offline path.
+_Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting `.env`/tokens in the public repo or unencrypted Drive

@@ -2,12 +2,48 @@
 
 **Wayfinder ticket:** [Memory system evaluation for librarian, implementor, and research agents](https://github.com/Noahlw/hermes/issues/41)<br>
 **Parent map:** [Wayfinder Map — Hermes V1 Implementation-Ready Specification](https://github.com/Noahlw/hermes/issues/38)<br>
-**Research date:** 2026-07-23<br>
-**Ticket status:** intentionally left open; this note is evidence for the later map session, not a resolution.
+**Research date:** 2026-07-23 (grill updates 2026-07-27)<br>
+**Ticket status:** Hybrid close — docs locked 2026-07-27; live verify required before #41 close.
+
+## Locked decisions (grill, 2026-07-27)
+
+| ID | Decision | Consequence |
+|---|---|---|
+| **MEM-1** | **Hermes-owned canonical store + retrieval index** | Codebase knowledge, research evidence, and audit/events are Hermes SoT. Qdrant/pgvector are indexes only. Mem0/Honcho/Letta/LangMem may assist working memory, never own code/research truth. Session-start codebase briefs are built from the knowledge layer (#40), not from peer-chat memory. |
+| **MEM-2** | **Keep Honcho for working / personal-advisor memory** | Reverted from Mem0 (D). V1 Assistant includes personal-advisor digests (news topics; email connectors may land later). Honcho owns peer/session/user modeling. Mem0/Qdrant working-memory collections are not required for that role — may idle or be cleaned later. Code/research truth still never lives in Honcho. |
+| **MEM-3** | **Two-database split** | **Hermes DB** = Hermes operational/canonical data (audit, research evidence, persona scope, session-brief metadata, digest artifacts). **Codebase index DB** = processed repo knowledge layer only (#40). No single combined store. Honcho remains a third runtime for personal working memory, not a third “wiki DB.” |
+| **MEM-4** | **Postgres for both DBs** | Hermes DB and codebase index DB are separate Postgres databases (or instances). Codebase index uses pgvector + FTS. Honcho keeps its own Postgres for peer/session memory. Resolves #40 IDX-3 engine deferral for the knowledge layer. |
+| **MEM-5** | **Uninstall neo4j now** | Out of V1 stack (same class as AgentMemory). Existing Neo4j→Drive backup cron is retired with it. Durable recovery moves to Postgres DB backups (see MEM-6), not a graph dump. |
+| **MEM-6** | **Portable restore: 3 Postgres dumps + secrets path** | Drive backups cover Hermes DB, codebase index DB, and Honcho Postgres. App/config from GitHub clone. Secrets stay on a separate encrypted/offline path. Repo working trees re-fetched from GitHub allowlist — not Drive. |
+| **MEM-7** | **Uninstall Mem0 + standalone Qdrant now** | Out of V1. Working memory is Honcho; codebase vectors are Postgres+pgvector. Thin `mem0.json` and `qdrant_mem0` are removal targets before #41 hybrid close. |
+| **MEM-8** | **Hybrid close for #41** | Close after research locks land **and** live verify: neo4j + Mem0 + Qdrant removed/disabled; Honcho remains healthy as `memory.provider`. Portable-restore cron and standing up the two new Postgres DBs are non-blocking follow-up tickets. |
+| **D-MEM-3** (from #39) | AgentMemory uninstalled | Candidate “retain agentmemory” in the 2026-07-23 draft is obsolete. |
+
+### Close checklist (MEM-8)
+
+- [ ] neo4j container not running / disabled stamp; ports 7474/7687 closed
+- [ ] Qdrant_mem0 container not running / disabled stamp; ports 6333/6334 closed
+- [ ] mem0.json absent (only *.disabled.*)
+- [ ] Hermes memory.provider == honcho (unchanged)
+- [ ] Honcho compose healthy
+- [ ] hermes-gateway.service active
+- [ ] Neo4j Drive backup cron not enabled
+
+### Observed VM baseline (re-verified 2026-07-27)
+
+| Component | State |
+|---|---|
+| Hermes `memory.provider` | `honcho` (kept for V1 working memory — MEM-2) |
+| Qdrant | Up — **MEM-7: uninstall** |
+| mem0 | Thin `mem0.json` — **MEM-7: uninstall** |
+| Honcho compose | Up (api/deriver/redis/pgvector) |
+| neo4j | Up — **MEM-5: uninstall** |
+| agentmemory | Removed |
+| Ollama | Inference only — not memory |
 
 ## Scope and constraints
 
-The handoff describes a self-hosted Hermes deployment on an Oracle VM, Tailscale-only connectivity, MCP as the consumer surface, and a current Qdrant + mem0 + agentmemory + Honcho stack ([Hermes V1 planner handoff](../../hermes-v1-handoff.md)). The parent map additionally fixes isolated persona working memory, a shared codebase knowledge layer, explicit persona selection, and controlled delegation ([parent map](https://github.com/Noahlw/hermes/issues/38)).
+The handoff describes a self-hosted Hermes deployment on an Oracle VM, Tailscale-only connectivity, MCP as the consumer surface, and a formerly over-composed stack (Qdrant + mem0 + agentmemory + Honcho; agentmemory now gone) ([Hermes V1 planner handoff](../../hermes-v1-handoff.md)). The parent map additionally fixes isolated persona working memory, a shared codebase knowledge layer, explicit persona selection, and controlled delegation ([parent map](https://github.com/Noahlw/hermes/issues/38)).
 
 This evaluation treats “memory” as four different data problems, not as one conversational-history feature:
 
@@ -20,7 +56,21 @@ The key question is therefore not “which product remembers best?” It is “w
 
 ## Executive finding
 
-**Recommendation (inference from the cited capabilities):** do not make a general-purpose agent-memory product the source of truth for the shared codebase wiki. Keep Qdrant, or benchmark it against pgvector, as a retrieval index; store canonical records and provenance in a relational/document layer controlled by Hermes. Put persona working memory behind a small Hermes-owned adapter with an explicit `(persona_id, task_id, visibility)` scope. Treat Mem0 or LangMem as optional extraction/working-memory layers, not as the authoritative repository or research store.
+**MEM-1 locked:** Hermes owns canonical records; retrieval indexes and agent-memory products are not SoT for codebase/research. Keep Qdrant, or benchmark it against pgvector, as a retrieval index; store canonical records and provenance in a relational/document layer controlled by Hermes. Put persona working memory behind a small Hermes-owned adapter with an explicit `(persona_id, task_id, visibility)` scope.
+
+**MEM-2 locked (revised):** Keep Honcho for V1 working / personal-advisor memory (Discord Assistant, prefs, news continuity). Mem0 is not the V1 working-memory SoT. Code/research still never live in Honcho.
+
+**MEM-3 locked:** Two databases — **Hermes DB** (Hermes itself) and **codebase index DB** (processed repos from #40). They are not merged into one store.
+
+**MEM-4 locked:** Both Hermes DB and codebase index DB are Postgres (separate DBs). Codebase index = Postgres + pgvector + FTS. Honcho retains its own Postgres for working memory.
+
+**MEM-5 locked:** Uninstall neo4j for V1. Graph overlay is not required; recovery must not depend on Neo4j dumps.
+
+**MEM-6 locked:** Portable restore = Google Drive dumps of Hermes DB + codebase index DB + Honcho Postgres; GitHub for code/config; secrets offline/encrypted. Repo clones re-fetched from allowlist.
+
+**MEM-7 locked:** Uninstall Mem0 and standalone Qdrant (`qdrant_mem0`) for V1. No dual vector path beside Postgres+pgvector; no Mem0 beside Honcho.
+
+**MEM-8 locked:** Hybrid close — docs + live uninstall verify (neo4j, Mem0, Qdrant); Honcho stays up. Portable-restore cron and new Hermes/codebase Postgres provisioning are follow-up tickets.
 
 The current stack is over-composed for V1 if all four services write overlapping memories. A defensible V1 split is:
 
