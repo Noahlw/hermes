@@ -55,7 +55,7 @@ def decide_discord_action(persona_id: str, action: str) -> GateResult:
             hint_persona="assistant",
         )
     if persona == "main_agent":
-        if action in {"manage_tasks", "conduct_tutoring", "run_ops_digest"} or action in MCP_ALLOWED_JOBS:
+        if action in {"manage_tasks", "conduct_tutoring", "run_ops_digest", "compose_digest"} or action in MCP_ALLOWED_JOBS:
             return GateResult(Decision.ALLOW, "main agent super-set allows action")
         return GateResult(Decision.REFUSE_DISCORD, "action not allowed for main agent")
     if persona == "assistant":

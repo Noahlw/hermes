@@ -58,6 +58,35 @@ class PersonaAdapterTests(unittest.TestCase):
         self.assertFalse(result.ignored)
         self.assertEqual(result.persona_id, "tutor")
 
+    def test_tutor_defaults_to_tutoring_by_mention(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["tutor"],
+            content="explain vector retrieval step by step",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "allow")
+
+    def test_refuse_result_preserves_hint_persona(self) -> None:
+        message = DiscordMessage(
+            channel_id="chan-1",
+            author_id="user-1",
+            mentions=["assistant"],
+            content="teach me distributed systems",
+        )
+        result = route_discord_message(
+            message,
+            home_channel_id="chan-1",
+            allowed_users={"user-1"},
+        )
+        self.assertEqual(result.decision.value, "refuse_discord")
+        self.assertEqual(result.hint_persona, "tutor")
+
     def test_mcp_route_has_typed_oos(self) -> None:
         result = route_mcp_tool("manage_tasks")
         self.assertEqual(result["ok"], False)

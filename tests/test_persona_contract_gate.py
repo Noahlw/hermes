@@ -37,6 +37,10 @@ class PersonaContractGateTests(unittest.TestCase):
             decide_discord_action("main_agent", "run_ops_digest").decision,
             Decision.ALLOW,
         )
+        self.assertEqual(
+            decide_discord_action("main_agent", "compose_digest").decision,
+            Decision.ALLOW,
+        )
 
     def test_developer_and_plan_execute_are_v1_oos(self) -> None:
         self.assertEqual(

@@ -20,12 +20,15 @@ class DiscordRoute:
     persona_id: str | None = None
     decision: Decision | None = None
     reason: str | None = None
+    hint_persona: str | None = None
 
 
-def _infer_action(content: str) -> str:
+def _infer_action(persona_id: str, content: str) -> str:
     normalized = content.lower()
     if "task" in normalized:
         return "manage_tasks"
+    if persona_id == "tutor":
+        return "conduct_tutoring"
     if "tutor" in normalized or "teach" in normalized:
         return "conduct_tutoring"
     return "compose_digest"
@@ -44,13 +47,14 @@ def route_discord_message(
         return DiscordRoute(ignored=True)
 
     persona_id = message.mentions[0].strip().lower()
-    action = _infer_action(message.content)
+    action = _infer_action(persona_id, message.content)
     result = decide_discord_action(persona_id, action)
     return DiscordRoute(
         ignored=False,
         persona_id=persona_id,
         decision=result.decision,
         reason=result.reason,
+        hint_persona=result.hint_persona,
     )
 
 
