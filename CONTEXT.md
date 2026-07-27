@@ -2,31 +2,72 @@
 
 ## Persona
 
-A distinct Hermes operating identity for a recurring kind of work. Each persona is an independently callable subagent with its own purpose, tools, authority, memory scope, and response contract. It is not merely a prompt variation.
+A distinct Hermes operating identity for a recurring kind of work. Each persona has its own purpose, tools, authority, memory scope, and response contract. It is not merely a prompt variation. In V1, which personas are *callable* vs *job-backed* is defined by the entrypoint model (see Persona selection).
 
-The exact persona set and the boundaries between personas remain to be decided during the planning interview.
+## Job-backed persona
+
+A persona with no Discord bot of its own. Hermes applies its contract when a matching MCP job runs (Librarian for codebase-info tools; Researcher for `conduct_research`). Any authorized Tailscale MCP consumer may call those tools; callers do not select the persona by name.
+_Avoid_: Discord bots for job-backed personas; requiring `agent_query(persona=…)` to use their tools; restricting Librarian/Researcher MCP jobs to one consumer beyond Tailscale auth
 
 ## Persona selection
 
-Callers select a persona explicitly when they need specialized behavior. If no persona is selected, Hermes falls back to the Main Agent.
+V1 selects Discord personas by **which bot is @-mentioned** (one Discord application/bot per Discord-reachable persona). Cron/ops jobs also run as Main Agent without Discord. Coding-agent MCP tools are persona-agnostic (no `persona` field, no `agent_query`); Librarian and Researcher contracts attach when their MCP jobs run. `conduct_tutoring` is **not** registered on the coding-agent information MCP server.
+_Avoid_: persona param on every MCP tool; resurrecting `agent_query` on the coding-agent MCP; Telegram as an Assistant/Tutor entrypoint; registering `conduct_tutoring` on the coding-agent MCP suite; one shared Discord bot that infers Assistant vs Tutor vs Main Agent
+
+## Discord persona bots
+
+V1 ships **three** Discord bots — **Assistant**, **Tutor**, and **Main Agent**. The user @-mentions the bot they want on the shared Discord home channel. Librarian and Researcher have **no** Discord bot; they are reached only through coding-agent MCP jobs, callable by any authorized Tailscale MCP consumer.
+_Avoid_: five Discord bots in V1; intent-classifier routing on a single bot; Discord bots for Librarian/Researcher; requiring separate channels per bot in V1
+
+## Tutor entrypoint
+
+Invoking the Tutor Discord bot (@-mention) on the Discord home channel. Tutoring runs under the Tutor persona contract (deep_dive defaults, Librarian + Researcher job tools). Bot identity — not prompt inference — chooses Tutor vs Assistant vs Main Agent.
+_Avoid_: Tutor-only Tailscale MCP as the V1 entrypoint; Open WebUI as the required V1 Tutor surface; mixing Tutor into coding-agent MCP tools; `/tutor` prefix on the Assistant bot as the primary V1 mechanism
 
 ## Main Agent
 
-The default Hermes operating identity used when a caller does not choose a specialized persona. It is a full general-purpose persona that can handle ordinary work itself and delegate when specialization is useful.
+The V1 ops, escalation, and **Discord super-set** persona. Owns cron/health digests, system-monitoring summaries, and operator-facing housekeeping. Its Discord bot may do everything Assistant and Tutor can (tasks, digests, deep-dive tutoring, Librarian/Researcher jobs) **plus** ops/escalation actions. It does not answer coding-agent MCP calls directly (those tools still apply Librarian/Researcher contracts). Assistant and Tutor remain separate bots with narrower defaults and isolated working memory.
+_Avoid_: Main Agent as the only Discord bot; Main Agent as coding-agent MCP narrator; deleting Assistant/Tutor bots because Main Agent can cover them
+
+## Assistant (persona)
+
+Discord bot for personal notes, tasks, light digests, and cited codebase/research answers. Allowed capabilities: `manage_tasks` (delete requires `confirm_delete`); personal digest composition from allowlisted sources; **internal** calls to Librarian jobs and Researcher jobs (same contracts as MCP — read/research only). Does not tutor deep-dive, mutate worktrees, or open PRs.
+_Avoid_: Assistant as Tutor; Assistant as implementor; registering Assistant-only tools on the coding-agent MCP server
+
+## Tutor (persona)
+
+Discord bot for academic / exam / internship tutoring. Defaults: `detail_level=deep_dive`, `language=cantonese_english_terms`; in deep_dive, **zero summarization** (full step-by-step, no “refer to the docs”). May use Librarian jobs and Researcher jobs as internal tools for code anchors and external sources. No `manage_tasks`, no worktree/PR mutation.
+_Avoid_: Tutor as task manager; Tutor as implementor; shallow overview as the V1 default detail level
 
 ## Persona delegation
 
-The Main Agent may delegate to specialized personas. A specialized persona may delegate only when its persona contract explicitly permits it; delegation is not an unrestricted peer-to-peer behavior.
+Assistant and Tutor may invoke Librarian/Researcher **jobs as tools** during a Discord turn (not by @-pinging a Librarian bot — none exists). Job-backed personas do not peer-delegate. No silent bot-to-bot switch mid-turn — if a specialist is out of scope, it **refuses** with a hint; the user may @Main Agent directly (super-set authority).
+_Avoid_: unrestricted silent persona hopping; Assistant @-mentioning Tutor to finish a turn without user action; auto-handoff to Main Agent
 
 ## Persona memory
 
-Each persona has isolated working memory for its own preferences, reasoning context, and operating history. The shared codebase knowledge layer is available to all personas. Cross-persona handoffs carry explicit task context and do not expose private persona memory by default.
+Each of the five V1 personas has **isolated working memory** (Honcho peer): Main Agent, Librarian, Researcher, Assistant, Tutor. The shared codebase knowledge layer and Hermes DB facts are available per contract. Cross-persona handoffs carry explicit task context only — private peer memory is not exposed by default. Main Agent’s super-set Discord authority does **not** grant read access to Assistant/Tutor peer memory.
+_Avoid_: one shared Discord chat peer for Assistant+Tutor+Main Agent; auto-merging specialist memory into Main Agent; treating Honcho as codebase SoT
+
+## Librarian (persona)
+
+Job-backed persona for codebase information work. Purpose: cited retrieval, briefs, catalog/freshness, citation expansion, and impact maps over the codebase index. Authority: read-only over the index; no Discord bot; no tasks/tutoring/mutations. Response: coding-agent MCP envelope when called via MCP; when invoked as an internal job from a Discord bot, evidence returns to that bot’s narrator under the same retrieval contracts.
+_Avoid_: Librarian as Discord bot; Librarian as implementor
+
+## Researcher (persona)
+
+Job-backed persona for external/technical research via `conduct_research`. Authority: research evidence only; no Discord bot; no codebase mutation; no `manage_tasks`. Response: MCP evidence schema when called via MCP; same job contract when invoked internally from Discord.
+_Avoid_: Researcher as Discord bot; Researcher as Tutor; path-only research results as the caller contract
 
 ## V1 persona set
 
-V1 ships with a fixed, deliberate set of personas discovered during use-case research, plus the Main Agent. User-created personas are outside the V1 boundary.
+V1 ships five fixed personas: **Main Agent**, **Librarian**, **Researcher**, **Assistant**, and **Tutor**. User-created personas are outside the V1 boundary. **Developer** is out of V1 — no implementor persona while the coding-agent MCP is information-only (#42).
 
-`Librarian`, `Developer`, and `Researcher` are starting hypotheses, not commitments. Use-case research may confirm, split, merge, or replace them.
+**Librarian** and **Researcher** are **job-backed contracts**: named personas with purpose, authority, isolated working memory, and response rules applied when their MCP jobs run. No Discord bot; MCP-callable by any authorized Tailscale consumer.
+
+**Librarian jobs (V1):** `library_search`, `session_brief`, `knowledge_catalog`, `expand_citation`, `impact_map`.  
+**Researcher jobs (V1):** `conduct_research` only.
+_Avoid_: Developer as a V1 persona; treating the #39 six-persona draft as still binding; user-created personas in V1; Discord bots for Librarian/Researcher; assigning session_brief or impact_map to Main Agent
 
 ## Hermes V1 planning destination
 
@@ -34,28 +75,54 @@ This wayfinder map ends at an implementation-ready Hermes V1 specification and d
 
 Use-case research must actively discover additional ways Hermes fits the user's life beyond knowledge retrieval, code-plan implementation, and research. Those findings shape the fixed V1 persona set and MCP surface.
 
+## Discord response contract
+
+V1 Discord bot replies are Markdown prose. When codebase or research evidence is used, the reply includes compact citation lines (`repo@rev path:start-end` or source URIs for research). Tutor deep_dive replies may be long; Assistant and routine Main Agent ops replies stay short unless the user asks for depth.
+_Avoid_: MCP JSON envelopes as Discord messages; citation-free code claims as the default; forcing every Assistant ack to include citations
+
+## manage_tasks
+
+Discord-only task capability used by Assistant and Main Agent bots: list / add / complete / delete. Delete requires `confirm_delete`. Not registered on the coding-agent information MCP server.
+_Avoid_: manage_tasks on the coding-agent MCP suite; task mutations without confirm_delete for delete
+
 ## Persona contract
 
 A source-managed definition for one persona. It states the persona's purpose, allowed tools, authority limits, memory scope, delegation rules, response format, and acceptance scenarios. Each fixed V1 persona must have a contract.
 
+## V1 persona acceptance scenarios
+
+Checklist that must pass for the V1 persona roster:
+- **Librarian** — coding-agent codebase-info tools return the MCP envelope + citations; mutation/task asks → typed OOS (optional systemic ops note).
+- **Researcher** — `conduct_research` returns the evidence schema; no worktree edits; Discord-internal research uses the same job rules.
+- **Assistant** — `@Assistant` tasks (`confirm_delete` on delete), digests, cited code/research answers; tutor deep-dive asks → refuse + hint.
+- **Tutor** — `@Tutor` deep_dive Cantonese+English-terms lessons with citations when evidence is used; `manage_tasks` → refuse + hint.
+- **Main Agent** — cron digests without Discord; `@Main Agent` may perform Assistant∪Tutor∪ops; coding-agent MCP is never narrated as Main Agent.
+- **Selection** — no @ → ignore; wrong bot → refuse only; no Librarian/Researcher Discord bots.
+- **Memory** — five isolated Honcho peers; Main Agent super-set does not share Assistant/Tutor diaries.
+_Avoid_: treating #39 six-persona + plan/execute acceptance as still binding
+
 ## Persona authority boundary
 
-A specialized persona must not silently act beyond its contract. When a request exceeds its authority, it returns an explicit out-of-scope result and may escalate to the Main Agent.
+A specialized persona must not silently act beyond its contract. When a request exceeds its authority, it returns an explicit out-of-scope result.
 
-When a caller explicitly selects a specialist and that specialist cannot handle the request, escalation goes only to the Main Agent; Hermes does not silently switch to another specialist.
+**Discord specialists (Assistant, Tutor):** **refuse only** — short OOS reply plus a hint to @ the right bot (or use MCP). No automatic Main Agent handoff and no silent bot switch.
+
+**Job-backed MCP OOS:** Librarian/Researcher tools return typed out-of-scope to the MCP caller (`ok: false` / envelope errors). Hermes may also write an **operator-visible Main Agent escalation note** (audit/digest, and/or Main Agent Discord) when the miss looks systemic. Main Agent never silently rewrites the tool response.
+_Avoid_: silent specialist-to-specialist handoff; auto-rerouting an MCP call to Assistant/Tutor; Main Agent silently rewriting an MCP tool response; Assistant/Tutor auto-continuing as Main Agent
 
 ## MiniMax-only
 
 Provider policy: Hermes may call MiniMax-M3 only. No OpenRouter, Codex, or DeepSeek fallback is permitted.
 
-## Assistant channel
-
-The end-user chat surface for the Assistant persona. In V1 this is Discord only: messages on the configured home channel from allowlisted users.
-_Avoid_: Telegram, DM-only Assistant gateway, multi-channel fan-out
-
 ## Discord home channel
 
-The single Discord channel Hermes monitors for Assistant note capture and task digests. Identified by `DISCORD_HOME_CHANNEL`. Messages outside this channel are ignored for V1 Assistant work.
+The single Discord channel (`DISCORD_HOME_CHANNEL`) where the Assistant, Tutor, and Main Agent bots all listen. Only the @-mentioned bot responds; messages with no Hermes bot mention are ignored. Same user allowlist for all three bots in V1.
+_Avoid_: reacting without an @-mention; per-bot required channels in V1; Telegram as home channel
+
+## Assistant channel
+
+Synonym in practice for Discord home-channel work aimed at the Assistant bot (@-mention). Allowlisted users only.
+_Avoid_: Telegram; DM-only Assistant gateway; treating unmarked messages as Assistant work
 
 ## Memory stack (V1)
 
@@ -111,8 +178,13 @@ For use-case research tickets: close after the accepted spec is written **and** 
 
 ## Portable restore
 
-The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres; secrets via a separate encrypted/offline path.
-_Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting `.env`/tokens in the public repo or unencrypted Drive
+The ability to stand up Hermes on a new machine by cloning from GitHub and restoring durable databases from Google Drive backups, so a deleted VM is not a total loss. V1 backup set: Hermes Postgres, codebase-index Postgres, Honcho Postgres. Secrets travel as an **encrypted archive on Drive**; a separate **unlock key file** (never uploaded to Drive) is required to decrypt. On restore, the operator points the agent or restore script at that key file.
+_Avoid_: treating the Oracle VM disk as the only copy of truth; Neo4j dumps as the recovery path; putting plaintext `.env`/tokens in the public repo or unencrypted on Drive; storing the unlock key on Drive
+
+## Unlock key file
+
+A generated **`age` identity** (private key file) that decrypts the Drive-stored encrypted secrets archive. It is kept offline / off-Drive; the operator supplies its path when importing secrets onto a new machine. Contents of the archive: minimal Hermes runtime secrets (`.env` / token export + rclone config as needed).
+_Avoid_: embedding the key in the Drive archive; committing the key to git; using a Drive-stored passphrase as the only secret; stuffing full `~/.hermes/` into the archive
 
 ## Schema migrations (Hermes)
 
