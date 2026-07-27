@@ -12,8 +12,8 @@ _TUTORING_INTENT = re.compile(
 )
 _TASK_MANAGEMENT = re.compile(
     r"\b("
-    r"(?:add|list|complete|delete|manage)\s+(?:my\s+|a\s+|the\s+)?tasks?"
-    r"|tasks?\s*:"
+    r"(?:add|list|complete|delete|manage)\s+(?:my\s+|a\s+|the\s+)?(?:tasks?|todos?)"
+    r"|(?:tasks?|todos?)\s*:"
     r")\b",
     re.IGNORECASE,
 )
