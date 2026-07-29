@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# Session-local scratch tickets — content is mirrored in GitHub issues
+# and committing them here would create drift.
+.scratch/

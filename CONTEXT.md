@@ -19,6 +19,16 @@ _Avoid_: persona param on every MCP tool; resurrecting `agent_query` on the codi
 V1 ships **three** Discord bots — **Assistant**, **Tutor**, and **Main Agent**. The user @-mentions the bot they want on the shared Discord home channel. Librarian and Researcher have **no** Discord bot; they are reached only through coding-agent MCP jobs, callable by any authorized Tailscale MCP consumer.
 _Avoid_: five Discord bots in V1; intent-classifier routing on a single bot; Discord bots for Librarian/Researcher; requiring separate channels per bot in V1
 
+## Contract gate integration
+
+This repo's `hermes/personas/` package (contract gate + adapters) is a dependency-free policy layer imported by the VM's existing `hermes-agent` gateway (`hermes-gateway.service`), not a replacement runtime and not a second competing process. `hermes-agent`'s Discord/MCP handlers call `route_discord_message()` / `route_mcp_tool()` before dispatching, reusing its live Discord connection, `.env` tokens, and gateway infrastructure. The policy module has not yet been validated against `hermes-agent`'s actual message/tool call shapes — that validation is unstarted follow-up work.
+_Avoid_: rewriting hermes-agent's gateway from scratch; running a second Discord listener process alongside hermes-agent; assuming this repo is the deployed runtime; treating the policy module as production-validated before the integration point is located and tested
+
+## confirm_delete UX (deferred — design captured, not implemented)
+
+`manage_tasks` delete confirmation, once built: a native Discord button prompt (`discord.ui.View` with Yes/No, reusing the existing `ExecApprovalView` interaction pattern already in hermes-agent's Discord adapter), sent via `gateway.adapters[Platform.DISCORD].send(...)` from within the `pre_gateway_dispatch` hook, not a text-reply confirmation phrase. The button click is a Discord interaction, not a `MessageEvent` — requires a separate interaction handler (not `pre_gateway_dispatch`) to catch the click and re-invoke the contract gate with `confirm_delete=True`. No interaction handler, view class, or wiring code exists yet; this term records the UX decision only.
+_Avoid_: text-phrase confirmation ("reply yes to confirm") as the V1 mechanism; treating this term as evidence the feature is built; inventing a second confirmation pattern when ExecApprovalView already exists in the same codebase
+
 ## Tutor entrypoint
 
 Invoking the Tutor Discord bot (@-mention) on the Discord home channel. Tutoring runs under the Tutor persona contract (deep_dive defaults, Librarian + Researcher job tools). Bot identity — not prompt inference — chooses Tutor vs Assistant vs Main Agent.
@@ -142,7 +152,12 @@ _Avoid_: persona-private notes; mixing with Hermes operational tables; Qdrant-as
 ## Session brief
 
 A compact, citation-backed sum-up Hermes returns at session start (or on demand) so callers spend fewer tokens rediscovering codebase/task context. Built from the codebase index database and an explicit task seed (optional repo filters and optional focus), not from peer-chat modeling alone.
-_Avoid_: dumping full chat history; uncited “what I remember” narratives as the brief; requiring Honcho preferences to build the V1 brief
+_Avoid_: dumping full chat history; uncited "what I remember" narratives as the brief; requiring Honcho preferences to build the V1 brief
+
+## Ops digest (deferred — design captured, not implemented)
+
+Main Agent's `run_ops_digest` action, once built: writes a durable record to the **Hermes database** `digests` table (satisfying the existing structured-digests commitment in the Hermes database term) AND proactively posts the same content to the Discord home channel via the `main_agent` profile's adapter. Both destinations, not one — durability plus visibility. Cadence: daily, staggered one hour after the existing `vm-health-check` cron job (`0 7 * * *` vs `vm-health-check`'s `0 6 * * *`) so the digest can consolidate that morning's health-check result rather than racing it. Content: full consolidation — every registered cron job gets a one-line status entry (not just health checks, not failures-only), matching the existing `≤ 200 token` / "one-line status per check" budget in `docs/use-case-specification.md` §10. On first deploy this will immediately surface `weekly-workspace-cleanup`'s pre-existing 401 auth failure (§6.7) — expected behavior, not a bug to fix as part of this ticket. No cron job, table schema, or send-path code exists yet; this term records the destination, cadence, and content-shape decisions only, for whoever picks up the cron/digest ticket.
+_Avoid_: Discord-only (loses history); Hermes-DB-only (operator must ask); weekly cadence (stale for same-day issues); health-only or failures-only content (excludes real signal); full per-job output dumps (blows the token budget — one line per job, not a report); treating this term as evidence the feature is built
 
 ## session_brief
 
