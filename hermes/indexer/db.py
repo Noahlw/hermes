@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from hermes.indexer.config import IndexerConfig
@@ -145,7 +145,7 @@ class CodebaseIndexDB:
     def revoke_repo(self, owner_name: str) -> datetime:
         """Mark repo as revoked with purge_after = now+30 days."""
         conn = self._connect()
-        purge = datetime.now(timezone.utc)
+        purge = datetime.now(UTC)
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE repos
@@ -373,7 +373,7 @@ class CodebaseIndexDB:
         after_sha: str | None,
     ) -> None:
         conn = self._connect()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO sync_cursors

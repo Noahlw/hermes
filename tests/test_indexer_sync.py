@@ -9,7 +9,7 @@ All tests use unittest.mock; no network or Postgres required.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from hermes.indexer.config import IndexerConfig
@@ -51,7 +51,7 @@ def _repo_row(
         status=status,
         revoked_at=None,
         purge_after=None,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -66,7 +66,7 @@ def _cursor_row(
         ref_name=ref_name,
         last_before_sha=None,
         last_after_sha=after_sha,
-        last_success_at=datetime.now(timezone.utc),
+        last_success_at=datetime.now(UTC),
     )
 
 
@@ -714,7 +714,7 @@ class RevokePurgeTests(SyncJobTestCase):
         """revoke_repo returns status 'revoked' with a future
         purge_after timestamp."""
         self.mock_db.get_repo.return_value = _repo_row()
-        purge_dt = datetime.now(timezone.utc) + timedelta(days=30)
+        purge_dt = datetime.now(UTC) + timedelta(days=30)
         self.mock_db.revoke_repo.return_value = purge_dt
 
         result = self.job.revoke_repo("org/myrepo")
@@ -926,7 +926,7 @@ class DemoteInactiveTests(SyncJobTestCase):
         mock_state: mock.MagicMock,
     ) -> None:
         """Active repos (idle < inactive_days) are skipped."""
-        days_ago = datetime.now(timezone.utc) - timedelta(days=5)
+        days_ago = datetime.now(UTC) - timedelta(days=5)
         self.mock_db.list_active_repos.return_value = [
             _repo_row(owner_name="org/active1"),
         ]
@@ -943,7 +943,7 @@ class DemoteInactiveTests(SyncJobTestCase):
         mock_state: mock.MagicMock,
     ) -> None:
         """Repos idle past inactive_days are demoted."""
-        old = datetime.now(timezone.utc) - timedelta(days=20)
+        old = datetime.now(UTC) - timedelta(days=20)
         self.mock_db.list_active_repos.return_value = [
             _repo_row(owner_name="org/idle1"),
             _repo_row(idx=2, owner_name="org/idle2"),

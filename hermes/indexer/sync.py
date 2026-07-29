@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from hermes.indexer.config import IndexerConfig
 from hermes.indexer.db import CodebaseIndexDB
@@ -443,7 +443,7 @@ class SyncJob:
             if state.last_activity is None:
                 continue
             idle_days = (
-                datetime.now(timezone.utc) - state.last_activity
+                datetime.now(UTC) - state.last_activity
             ).days
             if idle_days >= self._config.inactive_days:
                 log.info(
