@@ -13,7 +13,7 @@ import io
 import json
 import unittest
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -65,7 +65,7 @@ def _make_repo_row(
     row.status = status
     row.revoked_at = None
     row.purge_after = None
-    row.created_at = datetime.now(timezone.utc)
+    row.created_at = datetime.now(UTC)
     return row
 
 

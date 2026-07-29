@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hermes.indexer.config import IndexerConfig
@@ -165,7 +165,7 @@ def get_repo_default_branch(
             )
             if raw:
                 # refs/remotes/origin/main -> main
-                return raw.split("/", 2)[-1]
+                return raw.removeprefix("refs/remotes/origin/")
     except RuntimeError:
         pass
     return "main"
@@ -284,7 +284,7 @@ def mirror_last_activity(
             cwd=str(dest),
         )
         if raw:
-            return datetime.fromtimestamp(int(raw), tz=timezone.utc)
+            return datetime.fromtimestamp(int(raw), tz=UTC)
     except (RuntimeError, ValueError):
         pass
     return None
