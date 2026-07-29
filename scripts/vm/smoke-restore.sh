@@ -16,13 +16,15 @@
 # Exit codes:
 #   0 = all smoke checks pass
 #   1 = any check fails
+#
+# NOTE: Hermes Postgres (:5433) uses sudo -u postgres via Unix socket because
+# pg_hba only trusts app roles for exact DB names. Honcho (:5432) uses TCP.
 
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # Configurable defaults
 # ---------------------------------------------------------------------------
-HERMES_PGHOST="${HERMES_PGHOST:-127.0.0.1}"
 HERMES_PGPORT="${HERMES_PGPORT:-5433}"
 HERMES_ROLE="${HERMES_ROLE:-hermes_app}"
 HERMES_INDEX_ROLE="${HERMES_INDEX_ROLE:-codebase_index_app}"
@@ -33,8 +35,6 @@ HONCHO_ROLE="${HONCHO_ROLE:-postgres}"
 GDRIVE_REMOTE="${GDRIVE_REMOTE:-gdrive:}"
 DRIVE_FOLDER_ID="${DRIVE_FOLDER_ID:-17yovLP4BK1L_2jJKXbu4H4F-1kiGXzQM}"
 
-# Disposable DB names — these are tested for non-existence first to avoid
-# clobbering production databases.
 SMOKE_DB_HERMES="hermes_smoke"
 SMOKE_DB_INDEX="codebase_index_smoke"
 SMOKE_DB_HONCHO="honcho_smoke"
@@ -47,13 +47,16 @@ FAILED_CHECKS=()
 # ---------------------------------------------------------------------------
 log()  { printf '[smoke] %s\n' "$*"; }
 fail() { printf '[smoke][FATAL] %s\n' "$*" >&2; exit 1; }
+
 check() {
     local label="$1"
     shift
-    if "$@" >/dev/null 2>&1; then
-        log "  ✓ ${label}"
+    local out
+    if out="$("$@" 2>&1)"; then
+        log "  [PASS] ${label}"
     else
-        log "  ✗ ${label}"
+        log "  [FAIL] ${label}"
+        log "    ${out}"
         FAILED_CHECKS+=("$label")
     fi
 }
@@ -65,6 +68,16 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+
+# Postgres access helpers:
+SQL_HERMES() {
+    sudo -n -u postgres psql -h /var/run/postgresql \
+        -p "${HERMES_PGPORT}" -tA -X -v ON_ERROR_STOP=1 "$@"
+}
+SQL_HONCHO() {
+    PGPASSWORD="${HONCHO_PGPASSWORD:-}" psql -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" \
+        -U postgres -tA -X -v ON_ERROR_STOP=1 "$@"
+}
 
 # ---------------------------------------------------------------------------
 # Preflight
@@ -85,22 +98,17 @@ command -v psql >/dev/null 2>&1       || fail "psql not found"
 command -v rclone >/dev/null 2>&1     || fail "rclone not found"
 
 # ---------------------------------------------------------------------------
-# Safety: verify smoke DBs do not exist as production databases
+# Safety: verify smoke DBs do not exist yet
 # ---------------------------------------------------------------------------
 
-for smoke_db in "$SMOKE_DB_HERMES" "$SMOKE_DB_INDEX" "$SMOKE_DB_HONCHO"; do
-    if psql -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" -U postgres -tAc \
-        "SELECT 1 FROM pg_database WHERE datname='${smoke_db}'" 2>/dev/null | grep -q 1; then
-        fail "smoke database ${smoke_db} already exists on :${HERMES_PGPORT} — refusing to clobber"
+for smoke_db in "$SMOKE_DB_HERMES" "$SMOKE_DB_INDEX"; do
+    if SQL_HERMES -c "SELECT 1 FROM pg_database WHERE datname='${smoke_db}'" 2>/dev/null | grep -q 1; then
+        fail "database ${smoke_db} already exists on :${HERMES_PGPORT}"
     fi
 done
-
-for smoke_db in "$SMOKE_DB_HONCHO"; do
-    if psql -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" -U postgres -tAc \
-        "SELECT 1 FROM pg_database WHERE datname='${smoke_db}'" 2>/dev/null | grep -q 1; then
-        fail "smoke database ${smoke_db} already exists on :${HONCHO_PGPORT} — refusing to clobber"
-    fi
-done
+if SQL_HONCHO -c "SELECT 1 FROM pg_database WHERE datname='${SMOKE_DB_HONCHO}'" 2>/dev/null | grep -q 1; then
+    fail "database ${SMOKE_DB_HONCHO} already exists on :${HONCHO_PGPORT}"
+fi
 
 # ---------------------------------------------------------------------------
 # Step 1: Find latest daily backup
@@ -122,6 +130,8 @@ log "using backup date: ${RESTORE_DATE}"
 
 TEMP_DIR="$(mktemp -d)"
 log "downloading dumps..."
+# Make dumps readable by postgres user for pg_restore via sudo
+chmod -R a+rX "$TEMP_DIR" 2>/dev/null || true
 rclone copy "${GDRIVE_REMOTE}hermes-pg/daily/${RESTORE_DATE}/" \
     "$TEMP_DIR" --drive-root-folder-id "${DRIVE_FOLDER_ID}" || fail "rclone download failed"
 
@@ -146,71 +156,58 @@ done
 # Step 4: Create smoke databases and restore into them
 # ---------------------------------------------------------------------------
 
-run_psql_hermes() {
-    PGPASSWORD="${HERMES_PGPASSWORD:-}" psql -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" \
-        -U postgres -tA -X -v ON_ERROR_STOP=1 "$@"
-}
-run_psql_honcho() {
-    PGPASSWORD="${HONCHO_PGPASSWORD:-}" psql -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" \
-        -U postgres -tA -X -v ON_ERROR_STOP=1 "$@"
-}
+check "create ${SMOKE_DB_HERMES}" SQL_HERMES \
+    -c "CREATE DATABASE ${SMOKE_DB_HERMES} OWNER ${HERMES_ROLE};"
+check "create ${SMOKE_DB_INDEX}" SQL_HERMES \
+    -c "CREATE DATABASE ${SMOKE_DB_INDEX} OWNER ${HERMES_INDEX_ROLE};"
+check "create ${SMOKE_DB_HONCHO}" SQL_HONCHO \
+    -c "CREATE DATABASE ${SMOKE_DB_HONCHO} OWNER ${HONCHO_ROLE};"
 
-# Create smoke DBs
-check "create ${SMOKE_DB_HERMES}" run_psql_hermes -c "CREATE DATABASE ${SMOKE_DB_HERMES} OWNER ${HERMES_ROLE};"
-check "create ${SMOKE_DB_INDEX}"  run_psql_hermes -c "CREATE DATABASE ${SMOKE_DB_INDEX}  OWNER ${HERMES_INDEX_ROLE};"
-check "create ${SMOKE_DB_HONCHO}" run_psql_honcho -c "CREATE DATABASE ${SMOKE_DB_HONCHO} OWNER ${HONCHO_ROLE};"
-
-# Restore into smoke DBs
-# (pg_restore with --clean is safe since these are fresh empty DBs)
 check "restore ${SMOKE_DB_HERMES}" \
-    PGPASSWORD="${HERMES_PGPASSWORD:-}" pg_restore -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" \
-        -U "$HERMES_ROLE" -d "$SMOKE_DB_HERMES" "${TEMP_DIR}/hermes.dump"
+    sudo -n -u postgres pg_restore -h /var/run/postgresql -p "${HERMES_PGPORT}" \
+        -d "${SMOKE_DB_HERMES}" "${TEMP_DIR}/hermes.dump"
 
 check "restore ${SMOKE_DB_INDEX}" \
-    PGPASSWORD="${HERMES_INDEX_PGPASSWORD:-}" pg_restore -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" \
-        -U "$HERMES_INDEX_ROLE" -d "$SMOKE_DB_INDEX" "${TEMP_DIR}/codebase_index.dump"
+    sudo -n -u postgres pg_restore -h /var/run/postgresql -p "${HERMES_PGPORT}" \
+        -d "${SMOKE_DB_INDEX}" "${TEMP_DIR}/codebase_index.dump"
 
 check "restore ${SMOKE_DB_HONCHO}" \
-    PGPASSWORD="${HONCHO_PGPASSWORD:-}" pg_restore -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" \
-        -U "$HONCHO_ROLE" -d "$SMOKE_DB_HONCHO" "${TEMP_DIR}/honcho.dump"
+    env PGPASSWORD="${HONCHO_PGPASSWORD:-}" pg_restore -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" \
+        -U "${HONCHO_ROLE}" -d "${SMOKE_DB_HONCHO}" "${TEMP_DIR}/honcho.dump"
 
 # ---------------------------------------------------------------------------
 # Step 5: Verify restored data with SELECT
 # ---------------------------------------------------------------------------
 
-# Try to query each smoke DB — these are broad checks to prove restoration works
 log "verifying restored data..."
 
-# Hermes DB: check audit_events table exists (created in #47)
-CHECK_HERMES_TABLE="$(PGPASSWORD="${HERMES_PGPASSWORD:-}" psql -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" \
-    -U "$HERMES_ROLE" -d "$SMOKE_DB_HERMES" -tAc \
-    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" 2>/dev/null)"
+CHECK_HERMES_TABLE="$(sudo -n -u postgres psql -h /var/run/postgresql -p "${HERMES_PGPORT}" \
+    -d "${SMOKE_DB_HERMES}" -tAc \
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null)"
 if [[ "$CHECK_HERMES_TABLE" =~ ^[0-9]+$ ]] && (( CHECK_HERMES_TABLE > 0 )); then
-    log "  ✓ ${SMOKE_DB_HERMES}: ${CHECK_HERMES_TABLE} tables exist"
+    log "  [PASS] ${SMOKE_DB_HERMES}: ${CHECK_HERMES_TABLE} tables exist"
 else
-    log "  ✗ ${SMOKE_DB_HERMES}: no tables found"
+    log "  [FAIL] ${SMOKE_DB_HERMES}: no tables found (output: '${CHECK_HERMES_TABLE}')"
     FAILED_CHECKS+=("hermes_smoke_tables")
 fi
 
-# Codebase index DB: check repos table has content
-CHECK_INDEX_ROWS="$(PGPASSWORD="${HERMES_INDEX_PGPASSWORD:-}" psql -h "$HERMES_PGHOST" -p "$HERMES_PGPORT" \
-    -U "$HERMES_INDEX_ROLE" -d "$SMOKE_DB_INDEX" -tAc \
+CHECK_INDEX_ROWS="$(sudo -n -u postgres psql -h /var/run/postgresql -p "${HERMES_PGPORT}" \
+    -d "${SMOKE_DB_INDEX}" -tAc \
     "SELECT count(*) FROM repos;" 2>/dev/null)"
 if [[ "$CHECK_INDEX_ROWS" =~ ^[0-9]+$ ]]; then
-    log "  ✓ ${SMOKE_DB_INDEX}: ${CHECK_INDEX_ROWS} repos"
+    log "  [PASS] ${SMOKE_DB_INDEX}: ${CHECK_INDEX_ROWS} repos"
 else
-    log "  ✗ ${SMOKE_DB_INDEX}: could not query repos"
+    log "  [FAIL] ${SMOKE_DB_INDEX}: could not query repos (output: '${CHECK_INDEX_ROWS}')"
     FAILED_CHECKS+=("codebase_index_smoke_repos")
 fi
 
-# Honcho DB: check peers table has content
 CHECK_HONCHO_ROWS="$(PGPASSWORD="${HONCHO_PGPASSWORD:-}" psql -h "$HONCHO_PGHOST" -p "$HONCHO_PGPORT" \
-    -U "$HONCHO_ROLE" -d "$SMOKE_DB_HONCHO" -tAc \
+    -U postgres -d "${SMOKE_DB_HONCHO}" -tAc \
     "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null)"
 if [[ "$CHECK_HONCHO_ROWS" =~ ^[0-9]+$ ]] && (( CHECK_HONCHO_ROWS > 0 )); then
-    log "  ✓ ${SMOKE_DB_HONCHO}: ${CHECK_HONCHO_ROWS} tables exist"
+    log "  [PASS] ${SMOKE_DB_HONCHO}: ${CHECK_HONCHO_ROWS} tables exist"
 else
-    log "  ✗ ${SMOKE_DB_HONCHO}: no tables found"
+    log "  [FAIL] ${SMOKE_DB_HONCHO}: no tables found (output: '${CHECK_HONCHO_ROWS}')"
     FAILED_CHECKS+=("honcho_smoke_tables")
 fi
 
@@ -219,9 +216,9 @@ fi
 # ---------------------------------------------------------------------------
 
 log "cleaning up smoke databases..."
-run_psql_hermes -c "DROP DATABASE IF EXISTS ${SMOKE_DB_HERMES};" 2>/dev/null || true
-run_psql_hermes -c "DROP DATABASE IF EXISTS ${SMOKE_DB_INDEX};" 2>/dev/null || true
-run_psql_honcho -c "DROP DATABASE IF EXISTS ${SMOKE_DB_HONCHO};" 2>/dev/null || true
+SQL_HERMES -c "DROP DATABASE IF EXISTS ${SMOKE_DB_HERMES};" 2>/dev/null || true
+SQL_HERMES -c "DROP DATABASE IF EXISTS ${SMOKE_DB_INDEX};" 2>/dev/null || true
+SQL_HONCHO -c "DROP DATABASE IF EXISTS ${SMOKE_DB_HONCHO};" 2>/dev/null || true
 log "  smoke databases dropped"
 
 # ---------------------------------------------------------------------------
