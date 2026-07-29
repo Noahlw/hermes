@@ -1,0 +1,50 @@
+{
+  "_comment": "Hermes cron jobs. Managed by hermes-agent InProcessCronScheduler.",
+  "_note": "Each job: { id, name, enabled, command, schedule (cron), interval_minutes (alternative), args, log_file }",
+
+  "jobs": [
+    {
+      "id": "vm-health-check",
+      "name": "VM health check",
+      "enabled": true,
+      "command": "/home/ubuntu/.hermes/scripts/vm_health.sh",
+      "schedule": "0 6 * * *",
+      "log_file": "/home/ubuntu/.hermes/logs/cron/vm-health-check.log"
+    },
+    {
+      "id": "ollama-keep-alive",
+      "name": "Ollama keep-alive",
+      "enabled": true,
+      "command": "curl -s -o /dev/null http://127.0.0.1:11434/api/tags",
+      "schedule": "*/30 * * * *",
+      "log_file": "/home/ubuntu/.hermes/logs/cron/ollama-keep-alive.log"
+    },
+    {
+      "id": "weekly-workspace-cleanup",
+      "name": "Weekly workspace cleanup",
+      "enabled": true,
+      "command": "/home/ubuntu/.hermes/scripts/weekly-cleanup.sh",
+      "schedule": "0 3 * * 0",
+      "log_file": "/home/ubuntu/.hermes/logs/cron/weekly-cleanup.log"
+    },
+    {
+      "id": "portable-postgres-backup",
+      "name": "Portable Postgres backup to Drive",
+      "enabled": true,
+      "command": "/home/ubuntu/.hermes/scripts/vm/backup_postgres_drive.sh",
+      "_note": "Runs daily at 05:00 UTC. --weekly causes weekly snapshots to also be taken.",
+      "args": ["--weekly"],
+      "schedule": "0 5 * * *",
+      "log_file": "/home/ubuntu/.hermes/logs/cron/portable-postgres-backup.log"
+    },
+    {
+      "id": "neo4j-drive-backup",
+      "name": "Backup Neo4j to Google Drive",
+      "enabled": false,
+      "_note": "DISABLED — Neo4j retired per MEM-5. Kept for history only.",
+      "command": "/home/ubuntu/.hermes/scripts/backup_neo4j.sh",
+      "interval_minutes": 1440,
+      "log_file": "/home/ubuntu/.hermes/logs/cron/neo4j-drive-backup.log"
+    }
+  ]
+}
