@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from typing import Any
 
@@ -49,6 +50,20 @@ class DiscordRoute:
     confirm_required: bool = False
 
 
+def _strip_addressed_mention(content: str) -> str:
+    # Drop the leading ``@persona`` token so the classifier doesn't
+    # bias on the bot identity itself (e.g. ``_TUTORING_INTENT`` would
+    # match "tutor" inside ``@tutor`` and turn every tutor-bot message
+    # into ``conduct_tutoring``). The addressed mention is already
+    # resolved by ``route_discord_message`` before this is called,
+    # so the strip is purely cosmetic for the classifier — it does
+    # not change *who* the message is addressed to.
+    # Only a single leading token, optionally preceded by whitespace,
+    # so ordinary prose like "send mail to user@example.com" is left alone.
+    match = re.match(r"^\s*@\S+", content)
+    return content[match.end():] if match else content
+
+
 def _infer_action(persona_id: str, content: str) -> str:
     # Precedence:
     # 1) tutoring intent (so "teach me about todos/tasks" refuses on Assistant)
@@ -56,13 +71,14 @@ def _infer_action(persona_id: str, content: str) -> str:
     # 3) Tutor bot identity default
     # 4) bare task/todo word for Assistant-style routing
     # 5) default digest
-    if _TUTORING_INTENT.search(content):
+    body = _strip_addressed_mention(content)
+    if _TUTORING_INTENT.search(body):
         return "conduct_tutoring"
-    if _TASK_MANAGEMENT.search(content):
+    if _TASK_MANAGEMENT.search(body):
         return "manage_tasks"
     if persona_id == "tutor":
         return "conduct_tutoring"
-    if _TASK_WORD.search(content):
+    if _TASK_WORD.search(body):
         return "manage_tasks"
     return "compose_digest"
 
@@ -70,7 +86,7 @@ def _infer_action(persona_id: str, content: str) -> str:
 def route_discord_message(
     message: DiscordMessage,
     home_channel_id: str,
-    allowed_users: set[str],
+    allowed_users: AbstractSet[str],
 ) -> DiscordRoute:
     if message.channel_id != home_channel_id:
         return DiscordRoute(ignored=True)
@@ -146,3 +162,15 @@ def route_mcp_tool(tool_name: str, misuse_count: int = 0) -> dict[str, Any]:
         ],
         "systemic_escalation": result.systemic_escalation,
     }
+
+
+__all__: tuple[str, ...] = (
+    "Decision",
+    "DiscordMessage",
+    "DiscordRoute",
+    "decide_discord_action",
+    "decide_mcp_tool",
+    "load_contracts",
+    "route_discord_message",
+    "route_mcp_tool",
+)
