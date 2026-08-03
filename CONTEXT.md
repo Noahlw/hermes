@@ -199,6 +199,11 @@ _Avoid_: treating the restore chain as a tested path; committing real tokens; re
 The definition of "working Hermes" after install (ADR 0005): `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; Assistant, Tutor, and Main Agent Discord bots answer an @-mention; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope; `.env` validation clean. Ollama is excluded from acceptance until the embedding-provider decision lands.
 _Avoid_: treating an empty index or a silent gateway as success; blocking install on Ollama
 
+## Target environment (reboot)
+
+The fresh Hermes install runs on Oracle Cloud free tier, **Ampere A1 (ARM, 2 OCPU / 12 GB RAM)**, **Ubuntu 24.04 LTS aarch64** (ADR 0006, ticket #78). The VM was created manually in the Oracle console — install artifacts stay provider-agnostic (apt/systemd/SSH/Tailscale only, no OCI tooling). The E2.1.Micro shape is too small; Oracle Linux 9 was rejected because it would force porting the apt-based provision scripts to dnf + PGDG.
+_Avoid_: OCI CLI automation in v1; Oracle Linux / RHEL-family baseline; a local machine as the target (breaks the D2 redo-semantics assumption)
+
 ## Tailscale-internal surface
 
 Services intentionally reachable on the Tailscale mesh (not the public internet). V1 accepts SSH, tailscaled, Hermes gateway, and Open WebUI on that mesh. AgentMemory ports are removal targets. Leftover listeners are cleanup debt, not a rewrite of the zero-public-exposure rule.
