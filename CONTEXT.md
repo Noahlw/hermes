@@ -182,6 +182,22 @@ _Avoid_: stuffing news corpora into Honcho as a wiki; treating PopIdea (#46) as 
 ## Local inference
 
 On-VM model serving used for embeddings or generation (today: Ollama). Distinct from the memory stack.
+_Reboot (ADR 0005):_ the target is Oracle Cloud free tier (2 CPU / 12 GB RAM); Ollama is **not** installed there — it cannot run. The embedding host is an open product decision (#43/#38) and is not part of the install contract.
+
+## Install contract (reboot)
+
+The settled way Hermes gets installed from this repo (ADR 0005, ticket #80): a thin `setup/install.sh` chains the existing deterministic scripts (Postgres provision → smoke gate → indexer → restore-if-backup → final smoke), and a top-level `INSTALL.md` runbook carries the unscripted tail (Tailscale up, `.env` creation, gateway bring-up, profile apply, cron registration). A coding agent runs the script, then follows the runbook. Redo = re-clone/re-run from the top; the bootstrap halts on the first failing smoke.
+_Avoid_: Docker Compose as the install mechanism; idempotency machinery; requiring a Drive restore on the happy path
+
+## Fresh install (zero-data)
+
+The reboot starts with no durable state: the old VM is deleted and the Drive backup was never built. Secrets come from a committed `.env.example` template: the installer copies it to `.env`, validates every required key, and fails fast listing what is missing. The age-key/Drive backup-restore chain is retained as scripted DR only and is **unverified** (never executed end-to-end; prototype #77 dry-runs it).
+_Avoid_: treating the restore chain as a tested path; committing real tokens; requiring an age key for a first install
+
+## Install acceptance (reboot)
+
+The definition of "working Hermes" after install (ADR 0005): `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; Assistant, Tutor, and Main Agent Discord bots answer an @-mention; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope; `.env` validation clean. Ollama is excluded from acceptance until the embedding-provider decision lands.
+_Avoid_: treating an empty index or a silent gateway as success; blocking install on Ollama
 
 ## Tailscale-internal surface
 
