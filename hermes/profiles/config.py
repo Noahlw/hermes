@@ -10,7 +10,11 @@ from __future__ import annotations
 
 import enum
 import json
+import os
 from dataclasses import dataclass, field
+
+
+DEFAULT_PROFILES_ROOT = os.path.expanduser("~/.hermes/profiles")
 
 
 class ProfileKind(str, enum.Enum):
@@ -164,8 +168,21 @@ def generate_honcho_json(profile: ProfileDefinition) -> str:
 
 # Default cron jobs for main_agent profile (Ticket 72 § Ticket 3).
 # The ops-digest job is added during provisioning alongside existing
-# VM-wide cron entries.
-_MAIN_AGENT_CRON_JOBS: list[dict[str, object]] = [
+# VM-wide cron entries.  log_file is derived from the provision root so
+# jobs.json never embeds a machine-specific absolute path.
+def generate_cron_jobs_json(
+    profile: ProfileDefinition, root: str = DEFAULT_PROFILES_ROOT
+) -> str:
+    """Generate cron/jobs.json for *profile*.
+
+    Only main_agent runs the ops-digest cron job in V1; other profiles
+get an empty jobs array.  ``root`` is the profiles directory being
+provisioned (see hermes.profiles.provision); the ops-digest log path
+resolves under it.
+    """
+    jobs: list[dict[str, object]] = []
+    if profile.persona_id == "main_agent":
+        jobs = [
     {
         "id": "ops-digest",
         "name": "Daily ops digest",
@@ -173,20 +190,11 @@ _MAIN_AGENT_CRON_JOBS: list[dict[str, object]] = [
         "command": "hermes-digest",
         "schedule": "0 7 * * *",
         "args": ["--window", "24h"],
-        "log_file": "/home/ubuntu/.hermes/profiles/main_agent/logs/cron/ops-digest.log",
+                "log_file": os.path.join(
+                    root, profile.persona_id, "logs", "cron", "ops-digest.log"
+                ),
     },
 ]
-
-
-def generate_cron_jobs_json(profile: ProfileDefinition) -> str:
-    """Generate cron/jobs.json for *profile*.
-
-    Only main_agent runs the ops-digest cron job in V1; other profiles
-    get an empty jobs array.
-    """
-    jobs: list[dict[str, object]] = []
-    if profile.persona_id == "main_agent":
-        jobs = list(_MAIN_AGENT_CRON_JOBS)
     doc = {
         "_comment": f"Hermes V1 cron jobs — {profile.persona_id}.",
         "_note": "Managed by hermes-agent InProcessCronScheduler.",

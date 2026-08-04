@@ -166,10 +166,15 @@ class ConfigGenerationTests(unittest.TestCase):
 
     def test_cron_jobs_json_main_agent_has_ops_digest(self) -> None:
         profile = PROFILE_DEFINITIONS["main_agent"]
-        cron = json.loads(generate_cron_jobs_json(profile))
+        root = "/tmp/example-profiles"
+        cron = json.loads(generate_cron_jobs_json(profile, root))
         self.assertEqual(len(cron["jobs"]), 1)
         self.assertEqual(cron["jobs"][0]["id"], "ops-digest")
         self.assertEqual(cron["jobs"][0]["schedule"], "0 7 * * *")
+        self.assertEqual(
+            cron["jobs"][0]["log_file"],
+            f"{root}/main_agent/logs/cron/ops-digest.log",
+        )
 
     def test_cron_jobs_json_non_main_agent_is_empty(self) -> None:
         for pid in ("assistant", "tutor", "librarian", "researcher"):

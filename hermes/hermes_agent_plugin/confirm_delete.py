@@ -4,7 +4,9 @@ When an authorized Assistant or Main Agent user requests task deletion
 without confirmation, the pre_gateway_dispatch plugin returns a
 DiscordRoute with ``confirm_required=True`` and ``action: "skip"``.
 The gateway adapter then sends a native Yes/No ``discord.ui.View``
-confirmation prompt.
+confirmation prompt (design-captured in Ticket 74; the button-view
+wiring lives in hermes-agent and is not implemented in this repo —
+this module only handles the button click once such a view exists).
 
 This module handles the *button click* — a Discord interaction, not
 a MessageEvent — and re-invokes the contract gate with

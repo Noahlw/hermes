@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from hermes.profiles.config import (
+    DEFAULT_PROFILES_ROOT,
     PROFILE_DEFINITIONS,
     ProfileDefinition,
     generate_config_yaml,
@@ -20,9 +21,6 @@ from hermes.profiles.config import (
     generate_env_file,
     generate_honcho_json,
 )
-
-DEFAULT_PROFILES_ROOT = os.path.expanduser("~/.hermes/profiles")
-
 
 @dataclass(frozen=True)
 class _FileEntry:
@@ -137,7 +135,7 @@ def plan_provision(
         ))
         files.append((
             os.path.join(profile.persona_id, "cron", "jobs.json"),
-            generate_cron_jobs_json(profile),
+            generate_cron_jobs_json(profile, root),
         ))
 
     return ProvisionPlan(
