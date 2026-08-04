@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Hermes reboot install contract: hybrid bootstrap + runbook, zero-data fresh install, full-stack acceptance without Ollama
+# Hermes reboot install contract: hybrid bootstrap + runbook, zero-data fresh install, full-stack acceptance with local Ollama embeddings
 
 The Hermes repo is being reworked into the single install/setup entry point (map #76). The prior VM and all setup are deleted; this is a zero-data start. This ADR records the install contract settled by grilling ticket #80, grounded in the fresh-install inventory research (#79, `docs/research/2026-08-04-fresh-install-inventory.md`).
 
@@ -13,7 +13,7 @@ Key facts from #79: the repo already scripts the deterministic 80% of provisioni
 1. **Mechanism — hybrid.** A thin `setup/install.sh` chains the existing deterministic scripts in order (DB provision → smoke gate → indexer → restore-if-backup → final smoke), and a top-level `INSTALL.md` runbook carries the unscripted operator/agent steps (Tailscale up, `.env` creation, gateway bring-up, profile apply, cron registration). A coding agent runs the script, then follows the runbook for the tail. Docker Compose is rejected: it contradicts the settled systemd/apt direction (ADRs 0003/0004, `CONTEXT.md`: Hermes database).
 2. **Redo semantics — fresh-install-only + phase smoke gates.** Redo = re-clone/re-run from the top; the bootstrap halts on the first failing smoke (`smoke-hermes-postgres.sh` etc.). No **new** idempotency machinery is built: the existing provision scripts are already idempotent by design (`provision-hermes-postgres.sh` header: “Idempotent on every run” — dpkg gates around apt installs, marker-guarded pg_hba edits, role/DB existence checks), so re-running the scripted phases from the top is safe. **Caveat:** redo semantics assume a disposable target; revisit if #78 lands on a non-disposable target (e.g. local Mac).
 3. **Secrets — template-driven, zero-data start.** The Drive backup was never built, so there is nothing to restore. Happy path: committed `.env.example` → installer copies to `.env`, validates every required key, fails fast listing exactly what is missing. The age-key/Drive backup-restore chain (`key-bootstrap.sh` → `encrypt-secrets.sh` → `backup_postgres_drive.sh` → `restore_postgres_drive.sh` → `smoke-restore.sh`) is retained as **scripted DR only** and is **unverified** — it has never executed end-to-end; prototype #77 must dry-run it before it can be trusted.
-4. **Install acceptance — full stack, minus Ollama.** "Working Hermes" = all of: `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; all three Discord bots (Assistant, Tutor, Main Agent) answer an @-mention on the home channel; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope (`ok: true`); `.env` validation clean. **Ollama is not installed:** the target is Oracle Cloud free tier (2 CPU / 12 GB RAM), which cannot serve it. The embedding provider is therefore an open product decision (feeds #43/#38); the schema's `vector(768)`/`nomic-embed-text` pins and the `ollama-keep-alive` cron entry are suspended pending that decision.
+4. **Install acceptance — full stack, with local Ollama embeddings (D-C, amended 2026-08-04).** "Working Hermes" = all of: `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; all three Discord bots (Assistant, Tutor, Main Agent) answer an @-mention on the home channel; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope (`ok: true`); `.env` validation clean. **Ollama serves embedding-class models only** (nomic-embed-text, 137M params) on `127.0.0.1:11434`; 7B-class LLMs stay remote (MiniMax-M3, D-D). Original text said "cannot serve Ollama" — disproven by the live D-C benchmark (correction #5 below).
 
 ## Considered options
 
@@ -27,7 +27,7 @@ Key facts from #79: the repo already scripts the deterministic 80% of provisioni
 - Install artifacts land in `setup/` plus top-level `INSTALL.md`, executed by restructure ticket #81.
 - The #79 gap list (gateway + service unit not in repo; 5-profile apply unowned; cron registration; `.env` shape) defines the runbook tail.
 - Prototype #77 is the first executor of this contract and the verifier of the unverified DR chain.
-- Anything in the acceptance that requires Ollama or `nomic-embed-text` locally is invalid until the embedding-provider decision lands.
+- ~~Anything in the acceptance that requires Ollama or `nomic-embed-text` locally is invalid until the embedding-provider decision lands.~~ Superseded: D-C landed 2026-08-04 — local Ollama `nomic-embed-text` is part of the accepted stack (correction #5).
 - If #78 chooses a non-disposable target, decision 2 (redo semantics) is revisited.
 
 ## Prototype correction (#77, 2026-08-04)
@@ -133,4 +133,31 @@ smokes are recorded against real runs:
   reboot (self-heal via `Restart=on-failure`); hardening H2–H4 verified
   post-reboot (zram 3G, unattended-upgrades security-only, Oracle
   monitoring agent masked). Open gates unchanged: indexer first sync
-  (D-C / #43) and a live Discord @-mention.
+  (first sync pending) and a live Discord @-mention.
+
+## Prototype correction #5 — D-C lands: local Ollama embeddings (2026-08-04)
+
+The embedding-provider decision (#43) landed on **local Ollama** after the
+user ratified the live benchmark: the "Ollama cannot run on 2 OCPU / 12 GB"
+premise (this ADR's D4, ADR 0006 C) applied to 7B-class LLM serving, not
+embedding models.
+
+- **Benchmark (on the reboot target):** `nomic-embed-text` (137M params,
+  274 MB) pulled in ~8 s; embed of a ~350-token chunk: cold = warm = 1 s;
+  output 768-dim (matches the `vector(768)` schema pin); Ollama server RSS
+  ~40 MB with 5.9 GB RAM free.
+- **Install (manual, 3 steps — no scripted installer yet):** official
+  `ollama-linux-arm64.tar.zst` release (sha256-verified) extracted to
+  `/usr/local`; `setup/ollama/ollama.service` (binds `127.0.0.1:11434`
+  only, zero public exposure) enabled; `ollama pull nomic-embed-text`.
+- **Honcho wiring:** `EMBEDDING_MODEL_CONFIG__MODEL=nomic-embed-text` with
+  `__OVERRIDES__BASE_URL=http://127.0.0.1:11434/v1` (OpenAI-compatible),
+  `EMBEDDING_VECTOR_DIMENSIONS=768`; the `honcho` DB embedding columns were
+  migrated `vector(1536)` → `vector(768)` (both tables verified 0 rows
+  before the ALTER; HNSW indexes recreated with `vector_cosine_ops`).
+- **Live verification:** Honcho API + Deriver active; a message round-trip
+  (send → deriver embed → pgvector) returns a semantic search hit in 1.4 s.
+- **Acceptance impact:** the indexer first sync is **not** embedding-gated
+  (lexical FTS only — no `chunk_embeddings` writer exists); the D-C gate
+  covered the future semantic layer and the schema pins. `ollama-keep-alive`
+  cron re-enabled. MiniMax `text-embedding-3-small` remains unusable (404).

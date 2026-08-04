@@ -184,7 +184,7 @@ Next: open INSTALL.md and follow Step 2 (unscripted tail):
   - hermes-agent gateway + hermes-gateway.service (ADR 0004 — out of repo)
   - 5-profile provisioning via hermes/profiles/provision.py plan
   - cron registration
-  - Ollama is NOT installed (embedding provider TBD — do not install)
+  - Ollama embedding host (Step 2.5: tarball + systemd + nomic-embed-text)
 
 Then Step 3 (acceptance checklist) to mark "working Hermes".
 

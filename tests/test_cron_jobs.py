@@ -153,7 +153,8 @@ class CronExistingJobsNotRemovedTests(unittest.TestCase):
     """Reboot contract (map #76 Task 6, 2026-08-04): legacy VM paths are
     gone, the dead vm-health-check is replaced by hermes-health-check,
     weekly-workspace-cleanup is dropped (script lost with old VM), and
-    ollama-keep-alive is suspended pending the #43 decision."""
+    ollama-keep-alive is re-enabled since D-C landed (local Ollama
+    embeddings, 2026-08-04)."""
 
     def setUp(self) -> None:
         with open(CRON_JSON) as f:
@@ -181,9 +182,9 @@ class CronExistingJobsNotRemovedTests(unittest.TestCase):
         design-captured only (CONTEXT.md), so the job is dropped."""
         self.assertNotIn("weekly-workspace-cleanup", self.jobs_by_id)
 
-    def test_ollama_keep_alive_suspended(self) -> None:
-        """No Ollama on target (ADR 0005 D4); suspended until #43."""
-        self.assertFalse(self.jobs_by_id["ollama-keep-alive"]["enabled"])
+    def test_ollama_keep_alive_enabled(self) -> None:
+        """D-C landed: local Ollama serves embeddings on the target."""
+        self.assertTrue(self.jobs_by_id["ollama-keep-alive"]["enabled"])
 
     def test_no_job_uses_legacy_vm_path(self) -> None:
         """Reboot contract: no job references /home/ubuntu/.hermes."""
