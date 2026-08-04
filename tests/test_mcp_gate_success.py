@@ -125,6 +125,44 @@ def test_gate_envelope_returned_verbatim_when_oos(
     assert payload == oos
 
 
+def test_server_constructed_with_configured_bind_host(
+    env: GatewayConfig, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # FastMCP freezes its transport-security allowed_hosts from the
+    # constructor host argument; mutating settings.host later is too
+    # late (Tailscale-IP Host header would 421). Pin that the server is
+    # constructed with the configured bind host and port.
+    server = _make_server(env, _JsonLLM(), monkeypatch=monkeypatch)
+    assert server.settings.host == env.mcp_bind_host
+    assert server.settings.port == env.mcp_port
+
+
+def test_localhost_bind_keeps_rebinding_protection(
+    env: GatewayConfig, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Default config binds 127.0.0.1: FastMCP auto-enables DNS-rebinding
+    # protection with a localhost allowlist — the secure default must
+    # stay intact for the common deployment.
+    server = _make_server(env, _JsonLLM(), monkeypatch=monkeypatch)
+    security = server.settings.transport_security
+    assert security is not None
+    assert security.enable_dns_rebinding_protection is True
+    assert any(h.startswith("127.0.0.1") for h in security.allowed_hosts)
+
+
+def test_non_localhost_bind_disables_auto_rebinding_protection(
+    env: GatewayConfig, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Tailscale bind (private interface): the socket itself is the trust
+    # boundary, so the middleware must NOT keep a localhost-only
+    # allowlist (that 421-rejected every Tailscale-IP Host header).
+    monkeypatch.setenv("MCP_BIND_HOST", "100.105.214.8")
+    env2 = GatewayConfig.from_env()
+    server = _make_server(env2, _JsonLLM(), monkeypatch=monkeypatch)
+    security = server.settings.transport_security
+    assert security is None or not security.enable_dns_rebinding_protection
+
+
 def test_knowledge_catalog_success_with_index(
     env: GatewayConfig, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
