@@ -29,3 +29,35 @@ Hermes V1's persona contract gate (`hermes/personas/`, this repo) needs to actua
 - hermes-agent's own cron system (`cron/jobs.json`, `InProcessCronScheduler`) is the VM's existing cron — not a system to build alongside. The `main_agent` profile's `run_ops_digest` action becomes a new job in that profile's cron store.
 - Deploying 5 profiles is heavier than "3 Discord tokens in one config" — each profile duplicates config/skills/memory/cron/logs directory structure. This is accepted because it buys genuine isolation the persona roster requires anyway, not because it was the cheapest option.
 - **Open gap, explicitly not resolved by this ADR**: whether Honcho's `workspace_id` (not just `ai_peer` identity) is set per-profile is unverified. If it defaults to a shared `"hermes"` workspace across all 5 profiles, cross-persona memory reads may be technically possible even though each persona has a distinct peer name. This must be verified against the actual `honcho.json` config resolution path (or operationally, on the VM) before the "5 isolated Honcho peers" requirement can be marked satisfied.
+
+## Amendment — D-B fork 2 (2026-08-04): this repo's hermes-agent becomes the V1 runtime
+
+On 2026-08-04 the original VM — and with it the running hermes-agent v0.15.1
+gateway (live 49+ days at the time of the original ADR) — was deleted. Only
+the GitHub repo and the replacement VM remain; hermes-agent's gateway code is
+not recoverable. Decision gate D-B (plan
+`docs/omp-plans/2026-08-04-hermes-config-honcho.md`, fork 2) supersedes the
+"replace vs sidecar vs plugin hook" framing above:
+
+- This repo **rebuilds a minimal hermes-agent runtime** (`hermes_agent/`) that
+  imports the repo's policy layer (`hermes/personas/` —
+  `route_discord_message()`, `route_mcp_tool()`, `pre_gateway_dispatch` hook
+  semantics, `ExecApprovalView`-style approval flows) and honors the
+  integration model recorded above as its interface contract: deterministic
+  dispatch before any model call, one isolated profile per persona (profiles =
+  separate `HERMES_HOME`), scalar Discord token per profile, same-token reuse
+  refused, per-profile `honcho.json` `ai_peer`.
+- The upstream facts verified against `d71033a` remain load-bearing for the
+  rebuild even though the upstream code itself no longer runs.
+- **This amendment records the decision only.** Implementation is tracked as
+  Task 5 of the map #76 plan; no rebuilt runtime code exists in the repo at
+  the time of writing.
+- **Workspace-isolation gap (resolved):** the open gap above is closed
+  operationally by plan Task 4 (2026-08-04): `setup/honcho-workspaces.py`
+  provisions per-persona workspace AND peer `hermes_<persona>` (get-or-create
+  against self-hosted Honcho v3.0.12, verified live + SQL), matching
+  `hermes/profiles/config.py` `generate_honcho_json()`. The five
+  workspace-level isolation boundaries now exist server-side.
+- ADR 0005 D4 items 2–3 ("hermes-gateway.service up", "3 bots answer
+  @-mention") re-target at the rebuilt `hermes-gateway.service` (Task 5
+  acceptance).
