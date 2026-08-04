@@ -85,3 +85,25 @@ idempotent deploy, and smoke gate `j` is now satisfiable.
   matching `hermes/profiles/config.py` `generate_honcho_json()` exactly — the
   five workspace-level isolation boundary is now enforced server-side, and
   `tests/test_honcho_isolation.py` verifies the config side.
+
+## Prototype correction #3 — gateway tail shipped in-repo (D-B fork 2, 2026-08-04)
+
+The D4 acceptance items 2–3 (gateway up + systemd-enabled; three Discord
+bots answer @-mention) are now served by this repo's own runtime:
+
+- `hermes_agent/` — the rebuilt gateway (ADR 0004 amendment): multiplex
+  Discord adapters (assistant/tutor/main_agent), FastMCP server with the six
+  coding-agent tools, jobs.json cron scheduler, per-persona Honcho memory
+  client, MiniMax-M3 LLM client (json_object mode, D-D pin).
+- `setup/gateway.sh` + `setup/systemd/hermes-gateway.service` — idempotent
+  bring-up: `/opt/hermes-gateway` venv, `pip install -e .`, plan_provision
+  profile apply, unit install + enable. Bring-up stays in Step 2 (unscripted
+  tail → now repo-scripted); install.sh phase list is unchanged.
+- `DISCORD_ALLOWED_USER_ID` joins the REQUIRED key set (same allowlist for
+  all three bots, CONTEXT.md: Discord home channel) — .env.example,
+  install.sh, and setup/gateway.sh all validate it.
+- CONTEXT.md "Contract gate integration" term updated: `hermes.personas` is
+  imported by this repo's runtime, not an external hermes-agent.
+- Acceptance mapping: gateway up + enabled → `hermes-gateway.service`;
+  3 bots answer @-mention → bot loop proven on the VM (tokens are REQUIRED
+  in .env; no auto-generation).

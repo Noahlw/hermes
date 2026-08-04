@@ -24,8 +24,11 @@ _TASK_MANAGEMENT = re.compile(
     re.IGNORECASE,
 )
 _DELETE_INTENT = re.compile(
-    r"\bdelete\s+(?:my\s+|a\s+|the\s+|this\s+|these\s+|those\s+|all\s+|every\s+|completed\s+)?(?:tasks?|todos?)\b"
-    r"|\b(?:remove|wipe|clear|destroy)\s+(?:my\s+|a\s+|the\s+|this\s+|these\s+|those\s+|all\s+|every\s+|completed\s+)?(?:tasks?|todos?)\b",
+    # Up to two qualifier words, so "delete all my tasks" (two)
+    # refuses just like "delete my tasks" (one). The confirm_delete
+    # gate must not miss natural delete phrasings.
+    r"\bdelete\s+(?:(?:my|a|the|this|these|those|all|every|completed)\s+){0,2}(?:tasks?|todos?)\b"
+    r"|\b(?:remove|wipe|clear|destroy)\s+(?:(?:my|a|the|this|these|those|all|every|completed)\s+){0,2}(?:tasks?|todos?)\b",
     re.IGNORECASE,
 )
 _TASK_WORD = re.compile(r"\b(tasks?|todos?)\b", re.IGNORECASE)

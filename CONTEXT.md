@@ -21,8 +21,20 @@ _Avoid_: five Discord bots in V1; intent-classifier routing on a single bot; Dis
 
 ## Contract gate integration
 
-This repo's `hermes/personas/` package (contract gate + adapters) is a dependency-free policy layer imported by the VM's existing `hermes-agent` gateway (`hermes-gateway.service`), not a replacement runtime and not a second competing process. `hermes-agent`'s Discord/MCP handlers call `route_discord_message()` / `route_mcp_tool()` before dispatching, reusing its live Discord connection, `.env` tokens, and gateway infrastructure. The policy module has not yet been validated against `hermes-agent`'s actual message/tool call shapes — that validation is unstarted follow-up work.
-_Avoid_: rewriting hermes-agent's gateway from scratch; running a second Discord listener process alongside hermes-agent; assuming this repo is the deployed runtime; treating the policy module as production-validated before the integration point is located and tested
+This repo's `hermes/personas/` package (contract gate + adapters) is a
+dependency-free policy layer imported by this repo's own runtime,
+`hermes_agent/`, which is the V1 gateway (D-B fork 2, ADR 0004 amendment
+2026-08-04 — the external hermes-agent gateway was lost with the old VM;
+the "not a replacement runtime" stance is superseded). `hermes_agent`'s
+Discord and MCP handlers call `route_discord_message()` /
+`route_mcp_tool()` before dispatching, then run the approved action
+against MiniMax-M3, Honcho, and the codebase index. The policy module is
+validated against the runtime's message/tool shapes by the VM smoke gate
+(map #76 Task 5 acceptance: gateway up + enabled, three bots answer
+@-mention).
+_Avoid_: running a second Discord listener process alongside
+`hermes-gateway.service`; treating the policy module as
+production-validated before the VM smoke gate passes
 
 ## confirm_delete UX (deferred — design captured, not implemented)
 

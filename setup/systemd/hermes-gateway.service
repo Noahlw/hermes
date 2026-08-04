@@ -1,0 +1,19 @@
+[Unit]
+Description=Hermes in-repo gateway runtime (hermes_agent)
+After=network.target honcho-api.service
+Requires=honcho-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hermes
+EnvironmentFile=/home/ubuntu/hermes/.env
+ExecStart=/opt/hermes-gateway/venv/bin/python -m hermes_agent
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
