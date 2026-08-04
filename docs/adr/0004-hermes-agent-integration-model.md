@@ -39,7 +39,15 @@ not recoverable. Decision gate D-B (plan
 `docs/omp-plans/2026-08-04-hermes-config-honcho.md`, fork 2) supersedes the
 "replace vs sidecar vs plugin hook" framing above:
 
-- This repo **rebuilds a minimal hermes-agent runtime** (`hermes_agent/`) that
+
+**Superseded context:** the original Decision, Considered options, and
+Consequences sections below describe the deleted VM's architecture. They are
+retained as historical record; every current-state claim they make (running
+gateway, existing cron/UI infrastructure, the plugin-hook choice) describes a
+system that no longer exists and is superseded by this amendment.
+
+- **Rebuild decision:** this repo will gain a minimal hermes-agent runtime
+  (`hermes_agent/`, implemented as plan Task 5) that
   imports the repo's policy layer (`hermes/personas/` —
   `route_discord_message()`, `route_mcp_tool()`, `pre_gateway_dispatch` hook
   semantics, `ExecApprovalView`-style approval flows) and honors the
