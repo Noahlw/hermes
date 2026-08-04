@@ -146,8 +146,8 @@ for _ in $(seq 1 30); do
         # Active ≠ healthy: the unit can sit active while the bot fails to
         # log in or the runtime cannot start. --check validates config,
         # profiles, jobs and MCP tool registration; fail loudly otherwise.
-        env_pairs="$(grep -E '^[A-Z_][A-Z0-9_]*=' "$REPO_ROOT/.env" | xargs -d '\n')"
-        if sudo -u ubuntu env "$env_pairs" "$VENV/bin/python" -m hermes_agent --check \
+        readarray -t env_pairs < <(grep -E '^[A-Z_][A-Z0-9_]*=' "$REPO_ROOT/.env")
+        if sudo -u ubuntu env "${env_pairs[@]}" "$VENV/bin/python" -m hermes_agent --check \
                 >/tmp/hermes-gateway-check.log 2>&1; then
             log "hermes_agent --check OK"
             exit 0
