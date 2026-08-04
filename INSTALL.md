@@ -158,8 +158,10 @@ itself changed between attempts.
 
 ## Step 2 — unscripted tail
 
-Everything below is **not** in this repo. The repo supplies the
-contract and the policy code; the agent brings the runtime.
+Almost everything below is **not** in this repo. The repo supplies the
+contract and the policy code; the agent brings the runtime. The one
+exception: §2.6 Honcho — since 2026-08-04 (D-A/D-E) its deploy script
+and templates live in-repo (`setup/honcho.sh`, `setup/honcho/`).
 
 ### 2.1 hermes-agent gateway + hermes-gateway.service
 
@@ -224,7 +226,7 @@ bash setup/honcho.sh            # idempotent; re-run safe
 
 Env contract + unit templates live in `setup/honcho/` (`honcho.env.example`,
 `honcho-api.service`, `honcho-deriver.service`); the deploy script fills
-DB + LLM placeholders from `$HERMES_HOME/.env` on first run. The Deriver
+DB + LLM placeholders from the repo root `.env` on first run. The Deriver
 uses MiniMax-M3 via its OpenAI-compatible endpoint (D-D gate, verified
 2026-08-04 — `json_object` structured mode required). The embedding
 provider stays unresolved (D-C / #43).

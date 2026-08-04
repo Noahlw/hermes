@@ -148,8 +148,11 @@ J_OK=0
 if command -v curl >/dev/null 2>&1 && \
         curl -fsS --max-time 5 http://127.0.0.1:8000/health >/dev/null 2>&1; then
     J_OK=1
-elif bash -c 'exec 3<>/dev/tcp/127.0.0.1/8000' 2>/dev/null; then
-    J_OK=1
+else
+    # curl-less fallback: /dev/tcp, but require an HTTP 200 response so a
+    # random listener on :8000 cannot satisfy the gate.
+    J_STATUS="$(timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8000; printf "GET /health HTTP/1.0\r\n\r\n" >&3; IFS= read -r line <&3; printf "%s" "$line"' 2>/dev/null)"
+    case "$J_STATUS" in *200*) J_OK=1 ;; *) J_OK=0 ;; esac
 fi
 if (( J_OK )); then ok j; else bad j; fi
 
