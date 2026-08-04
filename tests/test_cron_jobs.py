@@ -20,9 +20,8 @@ SCHEDULE_KEYS = frozenset({"schedule", "interval_minutes"})
 
 # Hard-coded expectations from the portable-restore ticket (#48 / #53)
 EXPECTED_JOB_IDS: set[str] = {
-    "vm-health-check",
+    "hermes-health-check",
     "ollama-keep-alive",
-    "weekly-workspace-cleanup",
     "portable-postgres-backup",
     "neo4j-drive-backup",
 }
@@ -151,27 +150,48 @@ class CronPortableRestoreTests(unittest.TestCase):
 
 
 class CronExistingJobsNotRemovedTests(unittest.TestCase):
-    """Pre-existing jobs that existed before the portable-restore work
-    are still present (we didn't accidentally remove them)."""
+    """Reboot contract (map #76 Task 6, 2026-08-04): legacy VM paths are
+    gone, the dead vm-health-check is replaced by hermes-health-check,
+    weekly-workspace-cleanup is dropped (script lost with old VM), and
+    ollama-keep-alive is suspended pending the #43 decision."""
 
     def setUp(self) -> None:
         with open(CRON_JSON) as f:
             self.jobs_by_id = {j["id"]: j for j in json.load(f)["jobs"]}
 
-    def test_vm_health_check_present(self) -> None:
-        self.assertIn("vm-health-check", self.jobs_by_id)
+
+    def test_hermes_health_check_present(self) -> None:
+        self.assertIn("hermes-health-check", self.jobs_by_id)
 
     def test_ollama_keep_alive_present(self) -> None:
         self.assertIn("ollama-keep-alive", self.jobs_by_id)
 
-    def test_weekly_workspace_cleanup_present(self) -> None:
-        self.assertIn("weekly-workspace-cleanup", self.jobs_by_id)
 
-    def test_vm_health_check_is_enabled(self) -> None:
-        self.assertTrue(self.jobs_by_id["vm-health-check"]["enabled"])
+    def test_vm_health_check_replaced(self) -> None:
+        """Dead vm-health-check is gone; its schedule lives on under the
+        new id (ops-digest is one hour later at 0 7 * * *)."""
+        self.assertNotIn("vm-health-check", self.jobs_by_id)
+        self.assertTrue(self.jobs_by_id["hermes-health-check"]["enabled"])
 
     def test_vm_health_check_has_cron_schedule(self) -> None:
-        self.assertIn("schedule", self.jobs_by_id["vm-health-check"])
+        self.assertIn("schedule", self.jobs_by_id["hermes-health-check"])
+
+    def test_weekly_workspace_cleanup_removed(self) -> None:
+        """Script lost with the old VM; confirm-delete flow is
+        design-captured only (CONTEXT.md), so the job is dropped."""
+        self.assertNotIn("weekly-workspace-cleanup", self.jobs_by_id)
+
+    def test_ollama_keep_alive_suspended(self) -> None:
+        """No Ollama on target (ADR 0005 D4); suspended until #43."""
+        self.assertFalse(self.jobs_by_id["ollama-keep-alive"]["enabled"])
+
+    def test_no_job_uses_legacy_vm_path(self) -> None:
+        """Reboot contract: no job references /home/ubuntu/.hermes."""
+        for job in self.jobs_by_id.values():
+            blob = " ".join(
+                str(v) for v in (job.get("command"), job.get("log_file")) if v
+            )
+            self.assertNotIn("/home/ubuntu/.hermes", blob)
 
 
 if __name__ == "__main__":
