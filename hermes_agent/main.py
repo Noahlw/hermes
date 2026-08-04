@@ -80,13 +80,19 @@ def _check_jobs(jobs_path: str) -> tuple[bool, str]:
         return False, f"parse error: {exc}"
 
 
-def _check_mcp_importable() -> tuple[bool, str]:
+def _check_mcp_server(config: GatewayConfig) -> tuple[bool, str]:
     try:
-        from hermes_agent.mcp_server import create_mcp_server  # noqa: F401
+        from hermes_agent.llm import MiniMaxClient
+        from hermes_agent.mcp_server import create_mcp_server
 
-        return True, "create_mcp_server importable"
+        # Construct the server, not just import the module: the FastMCP
+        # import is lazy, so an import-only check passes even when the
+        # MCP SDK is missing/incompatible (e.g. mcp 2.x without
+        # mcp.server.fastmcp) and the gateway would crash on boot.
+        create_mcp_server(config, MiniMaxClient(config.minimax_api_key))
+        return True, "create_mcp_server constructs (6 tools)"
     except Exception as exc:  # noqa: BLE001
-        return False, f"import error: {exc}"
+        return False, f"server construction error: {exc}"
 
 
 def run_check(config: GatewayConfig) -> int:
@@ -117,8 +123,8 @@ def run_check(config: GatewayConfig) -> int:
     honcho_ok, honcho_msg = _check_honcho(config.honcho_base_url)
     print(f"[check] honcho: {'up' if honcho_ok else 'down'} — {honcho_msg}")
 
-    # 5. MCP tools importable
-    ok, msg = _check_mcp_importable()
+    # 5. MCP server construction
+    ok, msg = _check_mcp_server(config)
     print(f"[check] mcp tools: {'ok' if ok else 'FAIL'} — {msg}")
     if not ok:
         failures.append("mcp tools")
@@ -128,7 +134,6 @@ def run_check(config: GatewayConfig) -> int:
         return 1
     print("[check] OK")
     return 0
-
 
 # -- provision apply ---------------------------------------------------------
 
