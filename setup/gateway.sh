@@ -93,9 +93,10 @@ sudo -u ubuntu "$VENV/bin/pip" install --quiet -e "$REPO_ROOT"
 #    apply = mkdir -p dirs, then write each (rel_path, content) only if absent.
 # ---------------------------------------------------------------------------
 PROFILES_ROOT="$(grep -E '^PROFILES_ROOT=' "$REPO_ROOT/.env" | head -n1 | cut -d= -f2- || true)"
-export PROFILES_ROOT
 log "applying plan_provision() under $PROFILES_ROOT"
-sudo -u ubuntu "$VENV/bin/python" - <<'PY'
+# sudo env_reset strips exported vars — pass the value on the sudo
+# command line so a configured PROFILES_ROOT is honored, not defaulted.
+sudo -u ubuntu PROFILES_ROOT="$PROFILES_ROOT" "$VENV/bin/python" - <<'PY'
 import os
 from pathlib import Path
 from hermes.profiles.config import DEFAULT_PROFILES_ROOT
