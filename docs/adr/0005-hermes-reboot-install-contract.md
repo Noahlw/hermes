@@ -107,3 +107,30 @@ bots answer @-mention) are now served by this repo's own runtime:
 - Acceptance mapping: gateway up + enabled → `hermes-gateway.service`;
   3 bots answer @-mention → bot loop proven on the VM (tokens are REQUIRED
   in .env; no auto-generation).
+
+## Prototype correction #4 — live verification + MCP SDK pin (2026-08-04)
+
+The Task 5 gateway rebuild is live on the reboot target, and the acceptance
+smokes are recorded against real runs:
+
+- **MCP SDK pin `mcp>=1.2,<2`.** The first live deploy resolved `mcp 2.0.0`
+  (new release) against the then-`mcp>=1.2` floor; FastMCP moved out of
+  `mcp.server.fastmcp` in 2.x and the gateway crash-looped at server
+  construction. The gateway and its 400+ tests target the FastMCP 1.2 API;
+  a 2.x migration is out of scope. `--check` now **constructs** the MCP
+  server (6 tools) instead of only importing the module, so health waits
+  fail fast on SDK incompatibility.
+- **Transport security at construction.** FastMCP freezes its
+  DNS-rebinding `allowed_hosts` in `__init__` from the constructor `host`
+  argument. `create_mcp_server` therefore receives `host=config.mcp_bind_host`
+  at construction; localhost binds keep the secure default (test-pinned),
+  private-interface (Tailscale) binds leave the socket as the trust
+  boundary. Live: MCP streamable-http over Tailscale `100.105.214.8:8001`
+  returns `initialize`/`tools/list`/`tools/call` HTTP 200 (`serverInfo`
+  `hermes` 1.29.0; `knowledge_catalog` + `library_search` envelopes `ok: true`).
+- **Live evidence (2026-08-04):** DB smoke `ALL_PASS`; gateway active +
+  enabled, 3× Discord logins, `cron=4`; survived `kill -9` and a full VM
+  reboot (self-heal via `Restart=on-failure`); hardening H2–H4 verified
+  post-reboot (zram 3G, unattended-upgrades security-only, Oracle
+  monitoring agent masked). Open gates unchanged: indexer first sync
+  (D-C / #43) and a live Discord @-mention.
