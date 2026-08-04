@@ -32,10 +32,12 @@ HERMES_PGDB_CODEBASE_INDEX="${HERMES_PGDB_CODEBASE_INDEX:-codebase_index}"
 HERMES_INDEX_ROLE="${HERMES_INDEX_ROLE:-codebase_index_app}"
 
 # Honcho Postgres (Docker, :5432)
+# Honcho (shared Postgres 16 on :5433 — reboot D-A, 2026-08-04; Docker-era
+# defaults removed)
 HONCHO_PGHOST="${HONCHO_PGHOST:-127.0.0.1}"
-HONCHO_PGPORT="${HONCHO_PGPORT:-5432}"
-HONCHO_ROLE="${HONCHO_ROLE:-postgres}"
-HONCHO_PGDB="${HONCHO_PGDB:-postgres}"
+HONCHO_PGPORT="${HONCHO_PGPORT:-5433}"
+HONCHO_ROLE="${HONCHO_ROLE:-honcho_app}"
+HONCHO_PGDB="${HONCHO_PGDB:-honcho}"
 
 # Drive
 GDRIVE_REMOTE="${GDRIVE_REMOTE:-gdrive:}"

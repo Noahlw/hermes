@@ -189,10 +189,12 @@ unattended — profile provisioning affects live Discord tokens).
 
 Hermes's cron is hermes-agent's `InProcessCronScheduler` over
 `cron/jobs.json` — the VM's existing cron, not a parallel system
-(ADR 0004 C). Review `cron/jobs.json` before activating; the
-`ollama-keep-alive` entry targets a service that is **not** installed
-on this VM (see Step 2.5). Disable or remove Ollama-bound entries on
-reboot; re-enable only if the embedding-provider decision lands.
+(ADR 0004 C). The template (rewritten 2026-08-04, map #76 Task 6)
+already drops the legacy jobs whose scripts died with the old VM
+(`vm-health-check` → `hermes-health-check`, `weekly-workspace-cleanup`
+removed) and suspends `ollama-keep-alive` (see Step 2.5). Review
+`cron/jobs.json` before activating — every remaining command must
+resolve under `$HERMES_HOME` (`/home/ubuntu/hermes`) on this VM.
 
 ### 2.4 Library/cron regeneration
 
@@ -204,10 +206,10 @@ re-confirm the cron jobs land in the right `HERMES_HOME`.
 The target is Oracle Cloud free tier (2 CPU / 12 GB RAM); Ollama
 cannot run there (ADR 0005 D4, ADR 0006 C). The schema pins
 `vector(768)` / `nomic-embed-text` and the `ollama-keep-alive` cron
-entry are **suspended** until the embedding-provider decision
-(#43/#38) lands. Do not install Ollama on this VM. The smoke script
-verifies the 768-dim contract exists; the actual embedding host is
-TBD.
+entry are **suspended** in the `cron/jobs.json` template (2026-08-04,
+map #76 Task 6) until the embedding-provider decision (#43/#38)
+lands. Do not install Ollama on this VM. The smoke script verifies
+the 768-dim contract exists; the actual embedding host is TBD.
 
 ## Step 3 — acceptance checklist
 
