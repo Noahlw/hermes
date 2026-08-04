@@ -262,23 +262,34 @@ provider stays unresolved (D-C / #43).
 
 ADR 0005 D4 — "working Hermes" = all of:
 
-- [ ] `bash scripts/vm/smoke-hermes-postgres.sh` passes (`ALL_PASS`).
+
+- [x] `bash scripts/vm/smoke-hermes-postgres.sh` passes (`ALL_PASS`).
       (Requires Honcho up via Step 2.6; without it the gate ends at
-      `FAIL:j`.)
-- [ ] `hermes-gateway.service` is up and `systemctl is-enabled` returns
-      `enabled`.
-- [ ] All three Discord bots (Assistant, Tutor, Main Agent) answer an
-      `@-mention` on `DISCORD_HOME_CHANNEL`.
-- [ ] Cron jobs from `cron/jobs.json` are registered in the active
-      hermes-agent profile.
+      `FAIL:j`.) — verified live 2026-08-04 (`j:ok … ALL_PASS`).
+- [x] `hermes-gateway.service` is up and `systemctl is-enabled` returns
+      `enabled`. — verified live 2026-08-04; survived a full VM reboot
+      and a `kill -9` restart (systemd `Restart=on-failure`).
+- [~] All three Discord bots (Assistant, Tutor, Main Agent) answer an
+      `@-mention` on `DISCORD_HOME_CHANNEL`. — 3× static-token logins
+      verified live 2026-08-04; the refuse/confirm gate paths are
+      covered by tests. Final proof needs a live `@-mention` on the
+      home channel (operator action).
+- [x] Cron jobs from `cron/jobs.json` are registered in the active
+      hermes-agent profile. — 4 jobs live (`[gateway] up — … cron=4`).
 - [ ] Indexer completes a first sync (`python -m hermes.indexer
-      first-index owner/repo` for at least one allowlisted repo).
-- [ ] `library_search` returns the MCP envelope (`ok: true` + `hits`).
-- [ ] `.env` validation clean — `setup/install.sh` phase 1 reports
-      no missing keys.
+      first-index owner/repo` for at least one allowlisted repo). —
+      **gated on D-C / #43** (embedding provider; MiniMax 404s
+      `text-embedding-3-small`).
+- [x] `library_search` returns the MCP envelope (`ok: true` + `hits`). —
+      verified live over Tailscale streamable-http 2026-08-04
+      (`ok: true`; empty `hits` until the indexer sync lands).
+- [x] `.env` validation clean — `setup/install.sh` phase 1 reports
+      no missing keys. — gateway.sh preflight passed live (7/7 keys,
+      chmod 600).
 
 Ollama is excluded from acceptance until the embedding-provider
-decision lands.
+decision lands. `[~]` = needs a live operator action for final proof;
+`[ ]` = gated on an open decision (D-C / #43).
 
 ## Path notes
 
