@@ -41,7 +41,7 @@ not recoverable. Decision gate D-B (plan
 
 
 **Superseded context:** the original Decision, Considered options, and
-Consequences sections below describe the deleted VM's architecture. They are
+Consequences sections above describe the deleted VM's architecture. They are
 retained as historical record; every current-state claim they make (running
 gateway, existing cron/UI infrastructure, the plugin-hook choice) describes a
 system that no longer exists and is superseded by this amendment.
