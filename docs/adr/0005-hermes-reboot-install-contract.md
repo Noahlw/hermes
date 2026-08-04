@@ -51,3 +51,37 @@ recorded chain unimplementable as written:
   `FAIL:j` until the Step 2 tail brings Honcho up. All other checks pass on the
   bare scripted core. Open question: whether Honcho should join the scripted
   core (then the gate is fully satisfiable) or remain tail-verified.
+
+## Prototype correction #2 — Honcho joins the deploy contract (D-A/D-E/D-D, 2026-08-04)
+
+The #77 open question is resolved: Honcho joins the repo as a scripted,
+idempotent deploy, and smoke gate `j` is now satisfiable.
+
+- **D-A — deploy path.** Self-hosted Honcho v3.0.12 (`plastic-labs/honcho`,
+  tag `v3.0.12`, commit `5ad22840`) at `/opt/honcho`, installed with `uv`,
+  using the **third logical DB `honcho` on the existing Postgres 16 `:5433`**
+  (`DB_CONNECTION_URI=postgresql+psycopg://honcho_app:…@127.0.0.1:5433/honcho`),
+  systemd units `honcho-api.service` (`:8000`, uvicorn) and
+  `honcho-deriver.service`, no Redis (in-memory cache). Docker Compose and a
+  second Postgres cluster are rejected (ADR 0003/0004 alignment; smallest
+  footprint on 12 GB; one instance to back up). ARM64 build verified PASS on
+  the Ampere A1 target.
+- **D-D — Deriver LLM.** MiniMax-M3 satisfies Honcho's tool-calling deriver
+  contract via the OpenAI-compatible endpoint (`api.minimax.chat/v1`),
+  **conditional on `DERIVER_MODEL_CONFIG__STRUCTURED_OUTPUT_MODE=json_object`**
+  — MiniMax does not honor `response_format=json_schema`. Caveat: MiniMax
+  `<think>…` reasoning preambles are not stripped by Honcho and consume
+  output budget.
+- **Smoke `j` amendment.** The Docker-era `ss … :5432` probe is replaced by a
+  `curl /health` check on `127.0.0.1:8000` (with a `/dev/tcp` fallback). The
+  gate is now fully satisfiable by the repo: `setup/honcho.sh` brings Honcho
+  up idempotently (clone → `uv sync` → DB role/DB/extension → env from
+  `setup/honcho/honcho.env.example` → units → alembic → workspace/peer
+  provisioning via `setup/honcho-workspaces.py`). Wiring `honcho.sh` as an
+  install.sh phase is deferred to the gateway tail (Task 5) so the install
+  contract changes once.
+- **Isolation verification (ADR 0004 gap).** `setup/honcho-workspaces.py`
+  provisions `hermes_<persona>` workspace + peer per profile (get-or-create),
+  matching `hermes/profiles/config.py` `generate_honcho_json()` exactly — the
+  five workspace-level isolation boundary is now enforced server-side, and
+  `tests/test_honcho_isolation.py` verifies the config side.
