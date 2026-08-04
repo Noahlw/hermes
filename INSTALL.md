@@ -291,13 +291,15 @@ ADR 0005 D4 — "working Hermes" = all of:
       home channel (operator action).
 - [x] Cron jobs from `cron/jobs.json` are registered in the active
       hermes-agent profile. — 4 jobs live (`[gateway] up — … cron=4`).
-- [ ] Indexer completes a first sync (`python -m hermes.indexer
+- [x] Indexer completes a first sync (`python -m hermes.indexer
       first-index owner/repo` for at least one allowlisted repo). —
-      first sync pending (allowlist + run; D-C embedding gate landed
-      2026-08-04).
+      verified live 2026-08-04: `Noahlw/hermes` → 108 files / 326
+      symbols / 487 chunks (allowlist config at
+      `/home/ubuntu/.hermes/indexer/config.json`, D-C gate landed).
 - [x] `library_search` returns the MCP envelope (`ok: true` + `hits`). —
       verified live over Tailscale streamable-http 2026-08-04
-      (`ok: true`; empty `hits` until the indexer sync lands).
+      (`ok: true`, **5 FTS hits** after the indexer sync + MiniMax
+      grounded summary).
 - [x] `.env` validation clean — `setup/install.sh` phase 1 reports
       no missing keys. — gateway.sh preflight passed live (7/7 keys,
       chmod 600).
