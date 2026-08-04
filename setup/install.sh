@@ -10,11 +10,15 @@
 #   0. Preflight — OS is Ubuntu 24.04 aarch64, scripts/vm/*.sh exist.
 #   1. .env validation — every REQUIRED key is non-empty.
 #   2. Provision Hermes Postgres (scripts/vm/provision-hermes-postgres.sh).
-#   3. Smoke Postgres (scripts/vm/smoke-hermes-postgres.sh) — halts on FAIL.
-#   4. Provision codebase indexer (scripts/vm/provision-indexer.sh).
-#   5. Optional Drive restore — only if RESTORE_KEY_PATH is set in .env
+#   3. Apply DB migrations (db/migrate.sh) as the DB-owner roles; the
+#      pgvector extension needs a one-time superuser CREATE EXTENSION first
+#      (prototype #77 finding: migrations were never applied by the chain).
+#   4. Provision codebase indexer (scripts/vm/provision-indexer.sh) — before
+#      the smoke gate, which checks codebase_index tables (#77 finding).
+#   5. Smoke Postgres (scripts/vm/smoke-hermes-postgres.sh) — halts on FAIL.
+#   6. Optional Drive restore — only if RESTORE_KEY_PATH is set in .env
 #      (DR tier, unverified per ADR 0005 D3).
-#   6. Summary — point operator at INSTALL.md Step 2.
+#   7. Summary — point operator at INSTALL.md Step 2.
 #
 # Redo semantics: re-run from the top. Each chained script is idempotent
 # by design (see ADR 0005 D2 / research docs/research/2026-08-04-fresh-install-inventory.md §d).
@@ -65,6 +69,9 @@ for f in \
         fail "missing required script: ${f}"
     fi
 done
+if [[ ! -f db/migrate.sh ]]; then
+    fail "db/migrate.sh not found — run this script from the repo root"
+fi
 log "required scripts/vm/*.sh present"
 
 # ---------------------------------------------------------------------------
@@ -112,24 +119,44 @@ phase 2 "provision Hermes Postgres"
 bash scripts/vm/provision-hermes-postgres.sh
 
 # ---------------------------------------------------------------------------
-# Phase 3: smoke Postgres — first hard gate (halts on FAIL via set -e).
+# Phase 3: apply DB migrations.
+#
+# migrate.sh defaults HERMES_PGUSER to $USER, which lacks DDL rights on the
+# owner-role databases; run each migration as its DB-owner role. CREATE
+# EXTENSION vector additionally requires superuser, so it is done once as
+# postgres over the peer-auth unix socket (passwordless sudo is already a
+# hard requirement of the chained scripts).
 # ---------------------------------------------------------------------------
-phase 3 "smoke Hermes Postgres"
-if ! bash scripts/vm/smoke-hermes-postgres.sh; then
-    fail "smoke-hermes-postgres.sh failed — fix Postgres before re-running"
-fi
+phase 3 "apply DB migrations"
+HERMES_PGUSER="${HERMES_ROLE:-hermes_app}" bash db/migrate.sh hermes
+sudo -n -u postgres psql -h /var/run/postgresql -p "${HERMES_PGPORT:-5433}" \
+    -d "${HERMES_PGDB_CODEBASE_INDEX:-codebase_index}" \
+    -c 'CREATE EXTENSION IF NOT EXISTS vector;' >/dev/null
+HERMES_PGUSER="${HERMES_INDEX_ROLE:-codebase_index_app}" bash db/migrate.sh codebase_index
 
 # ---------------------------------------------------------------------------
-# Phase 4: provision codebase indexer
+# Phase 4: provision codebase indexer (schema already applied in phase 3;
+# its own migrate call then no-ops via schema_migrations).
 # ---------------------------------------------------------------------------
 phase 4 "provision codebase indexer"
 bash scripts/vm/provision-indexer.sh
 
 # ---------------------------------------------------------------------------
-# Phase 5: optional Drive restore (DR tier; unverified per ADR 0005 D3).
+# Phase 5: smoke Postgres — hard gate (halts on FAIL via set -e).
+# NOTE (#77): check j requires Honcho on :5432, which is outside the scripted
+# core (INSTALL.md Step 2 tail); until Honcho is up, expect FAIL:j here and
+# re-run the gate after the tail.
+# ---------------------------------------------------------------------------
+phase 5 "smoke Hermes Postgres"
+if ! bash scripts/vm/smoke-hermes-postgres.sh; then
+    fail "smoke-hermes-postgres.sh failed — fix Postgres before re-running"
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 6: optional Drive restore (DR tier; unverified per ADR 0005 D3).
 # Skipped when RESTORE_KEY_PATH is unset.
 # ---------------------------------------------------------------------------
-phase 5 "optional Drive restore"
+phase 6 "optional Drive restore"
 if [[ -n "${RESTORE_KEY_PATH:-}" ]]; then
     log "RESTORE_KEY_PATH set — running restore + smoke (DR tier, unverified)"
     if [[ ! -f "${RESTORE_KEY_PATH}" ]]; then
@@ -142,9 +169,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 6: summary
+# Phase 7: summary
 # ---------------------------------------------------------------------------
-phase 6 "summary"
+phase 7 "summary"
 cat <<'EOF'
 
 Scripted phases complete:

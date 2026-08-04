@@ -111,23 +111,32 @@ What it chains, in order (ADR 0005 D1, ADR 0006):
   `postgresql-16` + `postgresql-16-pgvector`, configures Hermes
   Postgres on `127.0.0.1:5433` (separate from Honcho's `:5432`),
   creates the `hermes` + `codebase_index` databases and roles.
-- **Phase 3** — `scripts/vm/smoke-hermes-postgres.sh`: round-trip
-  probes on both databases; pgvector 768-dim zero-vector insert;
-  schema_meta pins; Honcho `:5432` still listening. **First hard
-  gate** — halt on any `FAIL:<letters>`.
+- **Phase 3** — `db/migrate.sh` applies both schemas: `hermes` as
+  `hermes_app`, `codebase_index` as `codebase_index_app` (the owner
+  roles; `migrate.sh`'s `$USER` default lacks DDL rights). The
+  pgvector extension is created once as `postgres` over the peer-auth
+  unix socket — `CREATE EXTENSION` is superuser-only (prototype #77
+  finding: the pre-fix chain never applied migrations at all).
 - **Phase 4** — `scripts/vm/provision-indexer.sh`: apt-installs git +
   Python venv + `postgresql-client-16`; creates `indexer/config.json`;
   installs `hermes-indexer-webhook.service` and
-  `hermes-indexer-reconcile.{service,timer}`; runs `db/migrate.sh
-  codebase_index`.
-- **Phase 5** — optional Drive restore. **Only runs if
+  `hermes-indexer-reconcile.{service,timer}`; its own `db/migrate.sh
+  codebase_index` call no-ops (schema applied in phase 3).
+- **Phase 5** — `scripts/vm/smoke-hermes-postgres.sh`: round-trip
+  probes on both databases; pgvector 768-dim zero-vector insert;
+  schema_meta pins; Honcho `:5432` still listening. **Hard gate** —
+  halt on any `FAIL:<letters>`. **Honcho caveat (#77):** check `j`
+  fails until Honcho is up on `:5432`; Honcho is out-of-repo (ADR
+  0004) and brought up in Step 2, so a fresh scripted core ends at
+  `FAIL:j` — re-run the gate after Step 2. All other checks pass on
+  the bare scripted core.
+- **Phase 6** — optional Drive restore. **Only runs if
   `RESTORE_KEY_PATH` is set in `.env`.** Calls
   `restore_postgres_drive.sh "$RESTORE_KEY_PATH"` then
   `smoke-restore.sh "$RESTORE_KEY_PATH"`. This is the DR tier; it is
   **unverified** end-to-end per ADR 0005 D3 (prototype #77 dry-runs
   it before it can be trusted). On a zero-data fresh install, leave
   `RESTORE_KEY_PATH` empty and the phase is skipped.
-- **Phase 6** — summary, points at Step 2.
 
 The script logs every phase with clear `[install.sh]` markers and
 halts on the first failure. No new idempotency machinery is built; the
@@ -205,6 +214,8 @@ TBD.
 ADR 0005 D4 — "working Hermes" = all of:
 
 - [ ] `bash scripts/vm/smoke-hermes-postgres.sh` passes (`ALL_PASS`).
+      (Requires Honcho up on `:5432` — Step 2 tail. Without it the
+      gate ends at `FAIL:j`; re-run after Honcho.)
 - [ ] `hermes-gateway.service` is up and `systemctl is-enabled` returns
       `enabled`.
 - [ ] All three Discord bots (Assistant, Tutor, Main Agent) answer an
