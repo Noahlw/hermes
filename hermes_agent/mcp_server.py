@@ -1100,6 +1100,14 @@ class HttpServerHandle:
         import uvicorn
 
         server = create_mcp_server(config, llm)
+        # Mirror run_http: FastMCP derives its transport-security
+        # allowed_hosts from settings.host (auto-enable DNS rebinding
+        # protection for localhost), so the configured bind must be set
+        # before building the app — otherwise a Tailscale-IP Host header
+        # is rejected with 421 Invalid Host header. The socket itself is
+        # still bound only to the configured (private) interface.
+        server.settings.host = config.mcp_bind_host
+        server.settings.port = config.mcp_port
         self._uvicorn = uvicorn.Server(
             uvicorn.Config(
                 server.streamable_http_app(),
