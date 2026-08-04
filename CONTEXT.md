@@ -194,7 +194,7 @@ _Avoid_: stuffing news corpora into Honcho as a wiki; treating PopIdea (#46) as 
 ## Local inference
 
 On-VM model serving used for embeddings or generation (today: Ollama). Distinct from the memory stack.
-_Reboot (ADR 0005):_ the target is Oracle Cloud free tier (2 CPU / 12 GB RAM); Ollama is **not** installed there — it cannot run. The embedding host is an open product decision (#43/#38) and is not part of the install contract.
+_Reboot (D-C, 2026-08-04):_ the target (Oracle Cloud free tier, 2 CPU / 12 GB RAM) runs Ollama for **embedding-class** models only — `nomic-embed-text` (137M params) benchmarks at ~1 s/chunk, 768-dim, ~40 MB RSS. LLM-class models stay remote (MiniMax-M3, D-D); the earlier "Ollama cannot run" premise (ADR 0005/0006) applied to 7B-class sizes. Ollama serves `127.0.0.1:11434` only (zero public exposure).
 
 ## Install contract (reboot)
 
@@ -208,8 +208,8 @@ _Avoid_: treating the restore chain as a tested path; committing real tokens; re
 
 ## Install acceptance (reboot)
 
-The definition of "working Hermes" after install (ADR 0005): `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; Assistant, Tutor, and Main Agent Discord bots answer an @-mention; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope; `.env` validation clean. Ollama is excluded from acceptance until the embedding-provider decision lands.
-_Avoid_: treating an empty index or a silent gateway as success; blocking install on Ollama
+The definition of "working Hermes" after install (ADR 0005): `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; Assistant, Tutor, and Main Agent Discord bots answer an @-mention; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope; `.env` validation clean. Ollama embeddings (D-C) are part of the stack: `nomic-embed-text` on `127.0.0.1:11434`, Honcho embedding config pointed at it.
+_Avoid_: treating an empty index or a silent gateway as success; blocking install on an LLM-class local model
 
 ## Target environment (reboot)
 

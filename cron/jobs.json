@@ -1,6 +1,6 @@
 {
   "_comment": "Hermes cron jobs. Managed by hermes-agent InProcessCronScheduler.",
-  "_note": "Each job: { id, name, enabled, command, schedule (cron), interval_minutes (alternative), args, log_file }. Reboot rewrite (2026-08-04, map #76 Task 6): legacy /home/ubuntu/.hermes paths gone (HERMES_HOME=/home/ubuntu/hermes), dead jobs dropped, ollama suspended pending #43.",
+  "_note": "Each job: { id, name, enabled, command, schedule (cron), interval_minutes (alternative), args, log_file }. Reboot rewrite (2026-08-04, map #76 Task 6): legacy /home/ubuntu/.hermes paths gone (HERMES_HOME=/home/ubuntu/hermes), dead jobs dropped. ollama-keep-alive re-enabled 2026-08-04 when D-C landed (local Ollama embeddings on target).",
 
   "jobs": [
     {
@@ -14,8 +14,8 @@
     {
       "id": "ollama-keep-alive",
       "name": "Ollama keep-alive",
-      "enabled": false,
-      "_note": "SUSPENDED — no Ollama on target (ADR 0005 D4 / ADR 0006 C). Re-enable only if the embedding-provider decision (#43) lands.",
+      "enabled": true,
+      "_note": "D-C landed 2026-08-04: local Ollama serves embeddings (nomic-embed-text) on 127.0.0.1:11434; keeps the model warm.",
       "command": "curl -s -o /dev/null http://127.0.0.1:11434/api/tags",
       "schedule": "*/30 * * * *",
       "log_file": "/home/ubuntu/hermes/logs/cron/ollama-keep-alive.log"

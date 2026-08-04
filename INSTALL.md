@@ -222,7 +222,7 @@ Hermes's cron is hermes-agent's `InProcessCronScheduler` over
 (ADR 0004 C). The template (rewritten 2026-08-04, map #76 Task 6)
 already drops the legacy jobs whose scripts died with the old VM
 (`vm-health-check` → `hermes-health-check`, `weekly-workspace-cleanup`
-removed) and suspends `ollama-keep-alive` (see Step 2.5). Review
+removed) and re-enables `ollama-keep-alive` (see Step 2.5). Review
 `cron/jobs.json` before activating — every remaining command must
 resolve under `$HERMES_HOME` (`/home/ubuntu/hermes`) on this VM.
 
@@ -231,15 +231,29 @@ resolve under `$HERMES_HOME` (`/home/ubuntu/hermes`) on this VM.
 After profiles exist, regenerate any per-profile library files and
 re-confirm the cron jobs land in the right `HERMES_HOME`.
 
-### 2.5 Ollama is **not** installed
+### 2.5 Ollama (local embedding host — D-C landed 2026-08-04)
 
-The target is Oracle Cloud free tier (2 CPU / 12 GB RAM); Ollama
-cannot run there (ADR 0005 D4, ADR 0006 C). The schema pins
-`vector(768)` / `nomic-embed-text` and the `ollama-keep-alive` cron
-entry are **suspended** in the `cron/jobs.json` template (2026-08-04,
-map #76 Task 6) until the embedding-provider decision (#43/#38)
-lands. Do not install Ollama on this VM. The smoke script verifies
-the 768-dim contract exists; the actual embedding host is TBD.
+The embedding-provider decision (D-C, #43) landed on **local Ollama**
+after a live benchmark: `nomic-embed-text` (137M params) embeds at
+~1 s/chunk with 768-dim output on this Ampere A1 shape, using ~40 MB
+RSS with 5.9 GB RAM free — the earlier "Ollama cannot run here"
+premise (ADR 0005 D4 / ADR 0006 C) applied to 7B-class LLMs, not
+embedding models. LLM serving stays remote (MiniMax-M3, D-D).
+
+Install (manual, 3 steps — no scripted installer yet):
+
+1. Binary: download the official `ollama-linux-arm64.tar.zst` release,
+   verify the sha256, `sudo tar --zstd -xf ... -C /usr/local`
+   (gives `/usr/local/bin/ollama` + `/usr/local/lib/ollama`).
+2. Service: copy `setup/ollama/ollama.service` to
+   `/etc/systemd/system/` (binds `127.0.0.1:11434` only, zero public
+   exposure), then `sudo systemctl daemon-reload && sudo systemctl
+   enable --now ollama`.
+3. Model: `ollama pull nomic-embed-text` (274 MB).
+
+The `ollama-keep-alive` cron job (every 30 min) keeps the model warm.
+The smoke script verifies the 768-dim contract; the schema pins
+`vector(768)` / `nomic-embed-text` are the *defaults*, not placeholders.
 
 ### 2.6 Honcho (self-hosted memory backend)
 
@@ -255,8 +269,9 @@ Env contract + unit templates live in `setup/honcho/` (`honcho.env.example`,
 `honcho-api.service`, `honcho-deriver.service`); the deploy script fills
 DB + LLM placeholders from the repo root `.env` on first run. The Deriver
 uses MiniMax-M3 via its OpenAI-compatible endpoint (D-D gate, verified
-2026-08-04 — `json_object` structured mode required). The embedding
-provider stays unresolved (D-C / #43).
+2026-08-04 — `json_object` structured mode required). Embeddings use
+local Ollama `nomic-embed-text` at `http://127.0.0.1:11434/v1` (D-C,
+verified live 2026-08-04 — message → embed → pgvector → search hit).
 
 ## Step 3 — acceptance checklist
 
@@ -278,8 +293,8 @@ ADR 0005 D4 — "working Hermes" = all of:
       hermes-agent profile. — 4 jobs live (`[gateway] up — … cron=4`).
 - [ ] Indexer completes a first sync (`python -m hermes.indexer
       first-index owner/repo` for at least one allowlisted repo). —
-      **gated on D-C / #43** (embedding provider; MiniMax 404s
-      `text-embedding-3-small`).
+      first sync pending (allowlist + run; D-C embedding gate landed
+      2026-08-04).
 - [x] `library_search` returns the MCP envelope (`ok: true` + `hits`). —
       verified live over Tailscale streamable-http 2026-08-04
       (`ok: true`; empty `hits` until the indexer sync lands).
@@ -287,9 +302,9 @@ ADR 0005 D4 — "working Hermes" = all of:
       no missing keys. — gateway.sh preflight passed live (7/7 keys,
       chmod 600).
 
-Ollama is excluded from acceptance until the embedding-provider
-decision lands. `[~]` = needs a live operator action for final proof;
-`[ ]` = gated on an open decision (D-C / #43).
+Ollama embeddings are part of the accepted stack (D-C, 2026-08-04).
+`[~]` = needs a live operator action for final proof; `[ ]` = pending
+execution on the VM.
 
 ## Path notes
 
