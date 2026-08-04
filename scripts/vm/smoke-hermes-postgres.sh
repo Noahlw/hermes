@@ -143,11 +143,15 @@ REAL_DIMS="$(run_index -c \
 if [[ "$REAL_DIMS" == "768" ]]; then ok i; else bad i; fi
 
 # ---- j: Honcho :5432 still listening -------------------------------------
-if ss -tln 2>/dev/null | grep -q ':5432[[:space:]]'; then
-    ok j
-else
-    bad j
+# ---- j: Honcho API /health (self-hosted :8000; Docker-era :5432 gone) ------
+J_OK=0
+if command -v curl >/dev/null 2>&1 && \
+        curl -fsS --max-time 5 http://127.0.0.1:8000/health >/dev/null 2>&1; then
+    J_OK=1
+elif bash -c 'exec 3<>/dev/tcp/127.0.0.1/8000' 2>/dev/null; then
+    J_OK=1
 fi
+if (( J_OK )); then ok j; else bad j; fi
 
 # ---- k: schema_meta dim=768 ----------------------------------------------
 K_DIM="$(run_index -c "SELECT (value->>'dim') FROM schema_meta WHERE key='embedding_default_dim';" 2>/dev/null | tr -d ' ')"

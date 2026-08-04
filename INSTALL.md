@@ -109,7 +109,8 @@ What it chains, in order (ADR 0005 D1, ADR 0006):
 - **Phase 1** — `.env` present; every REQUIRED key is non-empty.
 - **Phase 2** — `scripts/vm/provision-hermes-postgres.sh`: apt-installs
   `postgresql-16` + `postgresql-16-pgvector`, configures Hermes
-  Postgres on `127.0.0.1:5433` (separate from Honcho's `:5432`),
+  Postgres on `127.0.0.1:5433` (Honcho shares this instance as the
+  third logical DB `honcho`, D-A 2026-08-04),
   creates the `hermes` + `codebase_index` databases and roles.
 - **Phase 3** — `db/migrate.sh` applies both schemas: `hermes` as
   `hermes_app`, `codebase_index` as `codebase_index_app` (the owner
@@ -124,12 +125,12 @@ What it chains, in order (ADR 0005 D1, ADR 0006):
   codebase_index` call no-ops (schema applied in phase 3).
 - **Phase 5** — `scripts/vm/smoke-hermes-postgres.sh`: round-trip
   probes on both databases; pgvector 768-dim zero-vector insert;
-  schema_meta pins; Honcho `:5432` still listening. **Hard gate** —
-  halt on any `FAIL:<letters>`. **Honcho caveat (#77):** check `j`
-  fails until Honcho is up on `:5432`; Honcho is out-of-repo (ADR
-  0004) and brought up in Step 2, so a fresh scripted core ends at
-  `FAIL:j` — re-run the gate after Step 2. All other checks pass on
-  the bare scripted core.
+  schema_meta pins; Honcho API `/health` on `127.0.0.1:8000` (was the
+  Docker-era `:5432` socket probe — amended 2026-08-04, ADR 0005
+  addendum #2). **Hard gate** — halt on any `FAIL:<letters>`. The gate
+  is fully satisfiable once Honcho is up (Step 2.6 brings it up via
+  `setup/honcho.sh`); a bare scripted core without Honcho ends at
+  `FAIL:j`.
 - **Phase 6** — optional Drive restore. **Only runs if
   `RESTORE_KEY_PATH` is set in `.env`.** Calls
   `restore_postgres_drive.sh "$RESTORE_KEY_PATH"` then
@@ -209,15 +210,32 @@ cannot run there (ADR 0005 D4, ADR 0006 C). The schema pins
 entry are **suspended** in the `cron/jobs.json` template (2026-08-04,
 map #76 Task 6) until the embedding-provider decision (#43/#38)
 lands. Do not install Ollama on this VM. The smoke script verifies
-the 768-dim contract exists; the actual embedding host is TBD.
+TBD.
+
+### 2.6 Honcho (self-hosted memory backend)
+
+Brings Honcho v3.0.12 up on the shared Postgres `:5433` (third logical
+DB `honcho`) with systemd API (`:8000`) + Deriver units, then
+provisions the five persona workspaces/peers:
+
+```bash
+bash setup/honcho.sh            # idempotent; re-run safe
+```
+
+Env contract + unit templates live in `setup/honcho/` (`honcho.env.example`,
+`honcho-api.service`, `honcho-deriver.service`); the deploy script fills
+DB + LLM placeholders from `$HERMES_HOME/.env` on first run. The Deriver
+uses MiniMax-M3 via its OpenAI-compatible endpoint (D-D gate, verified
+2026-08-04 — `json_object` structured mode required). The embedding
+provider stays unresolved (D-C / #43).
 
 ## Step 3 — acceptance checklist
 
 ADR 0005 D4 — "working Hermes" = all of:
 
 - [ ] `bash scripts/vm/smoke-hermes-postgres.sh` passes (`ALL_PASS`).
-      (Requires Honcho up on `:5432` — Step 2 tail. Without it the
-      gate ends at `FAIL:j`; re-run after Honcho.)
+      (Requires Honcho up via Step 2.6; without it the gate ends at
+      `FAIL:j`.)
 - [ ] `hermes-gateway.service` is up and `systemctl is-enabled` returns
       `enabled`.
 - [ ] All three Discord bots (Assistant, Tutor, Main Agent) answer an

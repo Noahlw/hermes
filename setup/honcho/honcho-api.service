@@ -1,0 +1,19 @@
+[Unit]
+Description=Honcho API server (self-hosted memory backend)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/honcho
+EnvironmentFile=/opt/honcho/.env
+ExecStart=/opt/honcho/.venv/bin/python -m uvicorn src.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

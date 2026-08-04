@@ -1,0 +1,19 @@
+[Unit]
+Description=Honcho Deriver (queue processor / worker)
+After=honcho-api.service
+Requires=honcho-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/honcho
+EnvironmentFile=/opt/honcho/.env
+ExecStart=/opt/honcho/.venv/bin/python -m src.deriver
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
