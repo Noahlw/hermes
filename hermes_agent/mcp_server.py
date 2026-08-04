@@ -887,7 +887,19 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
     # MCP subcommand actually runs.
     from mcp.server.fastmcp import FastMCP
 
-    server = FastMCP(name="hermes", instructions=INSTRUCTIONS)
+    # Pass the configured bind host/port at construction: FastMCP
+    # decides its transport-security allowed_hosts from the constructor
+    # ``host`` argument (auto-enable DNS rebinding protection for
+    # localhost), and mutating ``settings.host`` later is too late — a
+    # Tailscale-IP Host header would be rejected with 421. For
+    # localhost binds the behavior is unchanged; for a private-interface
+    # bind the socket itself is the trust boundary.
+    server = FastMCP(
+        name="hermes",
+        instructions=INSTRUCTIONS,
+        host=config.mcp_bind_host,
+        port=config.mcp_port,
+    )
 
     indexer_pair = _load_indexer(config)
     db = indexer_pair[1] if indexer_pair else None
@@ -1071,8 +1083,6 @@ async def run_stdio(config: GatewayConfig, llm: MiniMaxClient) -> None:
 async def run_http(config: GatewayConfig, llm: MiniMaxClient) -> None:
     """Run the MCP server over streamable HTTP on the configured bind."""
     server = create_mcp_server(config, llm)
-    server.settings.host = config.mcp_bind_host
-    server.settings.port = int(config.mcp_port)
     await server.run_streamable_http_async()
 
 
@@ -1100,14 +1110,6 @@ class HttpServerHandle:
         import uvicorn
 
         server = create_mcp_server(config, llm)
-        # Mirror run_http: FastMCP derives its transport-security
-        # allowed_hosts from settings.host (auto-enable DNS rebinding
-        # protection for localhost), so the configured bind must be set
-        # before building the app — otherwise a Tailscale-IP Host header
-        # is rejected with 421 Invalid Host header. The socket itself is
-        # still bound only to the configured (private) interface.
-        server.settings.host = config.mcp_bind_host
-        server.settings.port = config.mcp_port
         self._uvicorn = uvicorn.Server(
             uvicorn.Config(
                 server.streamable_http_app(),
