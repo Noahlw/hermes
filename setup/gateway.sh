@@ -135,6 +135,12 @@ fi
 if ! systemctl is-active --quiet hermes-gateway; then
     log "starting hermes-gateway"
     sudo systemctl start hermes-gateway
+else
+    # Redo = redeploy: pip install -e . + daemon-reload may have changed
+    # the runtime, and a running unit keeps its old in-memory code.
+    # Restart so the smoke checks the code that will actually serve.
+    log "restarting hermes-gateway (redeploy)"
+    sudo systemctl restart hermes-gateway
 fi
 
 # ---------------------------------------------------------------------------
