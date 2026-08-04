@@ -40,4 +40,5 @@ def test_runtime_naming_helper_matches_provisioner() -> None:
     import hermes_agent.honcho_client as hc
 
     for persona_id in PROFILE_DEFINITIONS:
-        assert hc.persona_workspace_name(persona_id) == f"hermes_{persona_id}"
+        workspace_id, ai_peer = hc._resolve_peer(persona_id)
+        assert workspace_id == ai_peer == f"hermes_{persona_id}"

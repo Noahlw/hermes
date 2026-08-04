@@ -122,6 +122,10 @@ class CronSchedule:
                 except ValueError as exc:
                     raise CronParseError(f"not an integer: {base!r}") from exc
                 if step == 1:
+                    if val < lo or val > hi:
+                        raise CronParseError(
+                            f"value out of range [{lo}-{hi}] in {part!r}"
+                        )
                     values.add(val)
                     continue
                 lo_eff, hi_eff = val, hi
@@ -150,7 +154,8 @@ class CronSchedule:
             and dt.hour in self.hour
             and dt.day in self.day
             and dt.month in self.month
-            and dt.weekday() in self.weekday
+            # cron weekdays: 0=Sunday … 6=Saturday; Python weekday(): 0=Monday.
+            and ((dt.weekday() + 1) % 7) in self.weekday
         )
 
 
