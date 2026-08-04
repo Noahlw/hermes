@@ -212,7 +212,7 @@ cannot run there (ADR 0005 D4, ADR 0006 C). The schema pins
 entry are **suspended** in the `cron/jobs.json` template (2026-08-04,
 map #76 Task 6) until the embedding-provider decision (#43/#38)
 lands. Do not install Ollama on this VM. The smoke script verifies
-TBD.
+the 768-dim contract exists; the actual embedding host is TBD.
 
 ### 2.6 Honcho (self-hosted memory backend)
 
