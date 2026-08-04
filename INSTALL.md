@@ -158,20 +158,47 @@ itself changed between attempts.
 
 ## Step 2 — unscripted tail
 
-Almost everything below is **not** in this repo. The repo supplies the
-contract and the policy code; the agent brings the runtime. The one
-exception: §2.6 Honcho — since 2026-08-04 (D-A/D-E) its deploy script
-and templates live in-repo (`setup/honcho.sh`, `setup/honcho/`).
+Most of what remains is operator/agent-supplied (Tailscale auth,
+profile apply, cron registration). Two tail items are scripted in-repo
+and run from the VM as `sudo bash setup/<name>.sh`:
 
-### 2.1 hermes-agent gateway + hermes-gateway.service
+- §2.1 — `setup/gateway.sh` (hermes-agent in-repo runtime,
+  ADR 0004 amendment D-B fork 2).
+- §2.6 — `setup/honcho.sh` (D-A/D-E, 2026-08-04).
 
-`hermes-agent` (NousResearch v0.15.1, [ADR 0004](./docs/adr/0004-hermes-agent-integration-model.md))
-is **not** packaged by this repo. Bring up its venv and
-`hermes-gateway.service` on the VM out-of-band. The integration seam
-this repo relies on is the `pre_gateway_dispatch` plugin hook — see
-ADR 0004 for the verified call site and the gateway's profile
-multiplexing model (one `HERMES_HOME` per persona, same-token reuse
-explicitly refused).
+### 2.1 hermes-agent gateway (in-repo) + hermes-gateway.service
+
+As of ADR 0004 amendment D-B fork 2 (2026-08-04), the hermes-agent
+gateway is **this repo's** `hermes_agent/` package — not an external
+dependency. The install contract brings it up with one script:
+
+```bash
+sudo bash setup/gateway.sh
+```
+
+`setup/gateway.sh` is idempotent: it creates `/opt/hermes-gateway` and
+a venv at `/opt/hermes-gateway/venv`, runs `pip install -e .`, applies
+`plan_provision()` (write-if-absent) under `PROFILES_ROOT`, installs
+`setup/systemd/hermes-gateway.service` into `/etc/systemd/system/`,
+and enables + starts the unit, polling for `active` for up to 30 s.
+
+`.env` MUST already have all seven REQUIRED keys filled before this
+script runs (install.sh phase 1 enforces this; the gateway script
+re-validates the same set as its own pre-flight). Tokens are not
+auto-generated.
+
+Path note: the unit's `ExecStart` points at
+`/opt/hermes-gateway/venv/bin/python` (the gateway venv), while
+`WorkingDirectory=/home/ubuntu/hermes` is the repo clone (the path
+from Step 1.1). Mismatched paths cause systemd's
+`No such file or directory` failures on start; redo = re-run
+`setup/gateway.sh` after fixing paths.
+
+The integration seam — the contract gate's `route_discord_message()` /
+`route_mcp_tool()` — is imported from this repo's `hermes.personas`
+package by `hermes_agent` at runtime; see ADR 0004 for the verified
+call site and the gateway's profile multiplexing model (one
+`HERMES_HOME` per persona, same-token reuse explicitly refused).
 
 ### 2.2 5-profile provisioning
 
