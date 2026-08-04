@@ -80,6 +80,39 @@ def _gate_error_envelope(tool_name: str, misuse_count: int = 0) -> dict[str, Any
     return _gate(tool_name, misuse_count=misuse_count)
 
 
+def _index_guard(
+    tool_name: str,
+    fn: Callable[..., dict[str, Any]],
+    *args: Any,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Run an index-backed tool, mapping backend failures to envelopes.
+
+    ``CodebaseIndexDB``/``mirror`` raise (psycopg2 ``OperationalError``,
+    ``RuntimeError`` when psycopg2 is missing, file errors) when the
+    index is unreachable; LLM failures are already contained to
+    ``warnings`` inside the tool bodies, so any exception escaping
+    here is index-layer. Surface it as INDEX_UNAVAILABLE instead of a
+    generic MCP tool error so consumers can distinguish "index down"
+    from "bad request".
+    """
+    try:
+        return fn(*args, **kwargs)
+    except Exception as exc:  # noqa: BLE001 — index layer, see docstring
+        logger.warning("[mcp] %s indexer error: %s", tool_name, exc)
+        return _envelope(
+            tool=tool_name,
+            ok=False,
+            errors=[
+                {
+                    "code": "INDEX_UNAVAILABLE",
+                    "surface": "mcp",
+                    "message": str(exc),
+                }
+            ],
+        )
+
+
 # -- helpers ------------------------------------------------------------------
 
 
@@ -139,12 +172,19 @@ def _search_hits(
     query: str,
     limit: int,
     repos: list[str] | None,
+    revision: str | None = None,
 ) -> list[dict[str, Any]]:
-    """FTS hits with optional repo filter."""
+    """FTS hits with optional repo and revision (commit-sha prefix) filters."""
     hits = db.search_chunks(query, limit=limit)
     if repos:
         wanted = {r.strip() for r in repos if r and r.strip()}
         hits = [h for h in hits if h.get("owner_name") in wanted]
+    if revision:
+        rev = str(revision).strip()
+        hits = [
+            h for h in hits
+            if str(h.get("commit_sha", "")).startswith(rev)
+        ]
     return hits
 
 
@@ -285,7 +325,7 @@ def _tool_library_search(
 ) -> dict[str, Any]:
     """library_search: FTS hits + MiniMax-grounded summary."""
     cap = _safe_limit(limit, default=5, cap=MAX_LIMIT)
-    hits = _search_hits(db, query, cap, repos)
+    hits = _search_hits(db, query, cap, repos, revision=revision)
     citations = _dedup_citations(_hit_to_citation(h) for h in hits)
     summary, warnings = _summarise_hits(
         llm,
@@ -885,7 +925,9 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
         err = _require_db("library_search")
         if err is not None:
             return err
-        return _tool_library_search(
+        return _index_guard(
+            "library_search",
+            _tool_library_search,
             db,  # type: ignore[arg-type]
             llm,
             query=query,
@@ -902,7 +944,12 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
         err = _require_db("knowledge_catalog")
         if err is not None:
             return err
-        return _tool_knowledge_catalog(db, repos=repos)  # type: ignore[arg-type]
+        return _index_guard(  # type: ignore[arg-type]
+            "knowledge_catalog",
+            _tool_knowledge_catalog,
+            db,
+            repos=repos,
+        )
 
     @server.tool(name="expand_citation")
     def expand_citation(
@@ -929,7 +976,9 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
                     }
                 ],
             )
-        return _tool_expand_citation(
+        return _index_guard(
+            "expand_citation",
+            _tool_expand_citation,
             indexer_cfg,
             repo=repo,
             revision=revision,
@@ -956,7 +1005,9 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
         err = _require_db("impact_map")
         if err is not None:
             return err
-        return _tool_impact_map(
+        return _index_guard(
+            "impact_map",
+            _tool_impact_map,
             db,  # type: ignore[arg-type]
             llm,
             mode=mode,
@@ -980,7 +1031,9 @@ def create_mcp_server(config: GatewayConfig, llm: MiniMaxClient) -> Any:
         err = _require_db("session_brief")
         if err is not None:
             return err
-        return _tool_session_brief(
+        return _index_guard(
+            "session_brief",
+            _tool_session_brief,
             db,  # type: ignore[arg-type]
             llm,
             task=task,
@@ -1033,8 +1086,41 @@ def run_http_sync(config: GatewayConfig, llm: MiniMaxClient) -> None:
     asyncio.run(run_http(config, llm))
 
 
+class HttpServerHandle:
+    """Run FastMCP over uvicorn with an external stop signal.
+
+    ``serve`` blocks (call it via ``run_in_executor``); ``stop`` asks
+    uvicorn to exit so the executor thread joins promptly on shutdown
+    instead of holding the MCP port while the process is supposed to
+    be gone. Bind failures surface from ``serve`` for the caller to
+    raise.
+    """
+
+    def __init__(self, config: GatewayConfig, llm: MiniMaxClient) -> None:
+        import uvicorn
+
+        server = create_mcp_server(config, llm)
+        self._uvicorn = uvicorn.Server(
+            uvicorn.Config(
+                server.streamable_http_app(),
+                host=config.mcp_bind_host,
+                port=config.mcp_port,
+                log_level="warning",
+            )
+        )
+
+    def serve(self) -> None:
+        """Block until ``stop`` (or process signal). Raises on bind failure."""
+        self._uvicorn.run()
+
+    def stop(self) -> None:
+        """Ask uvicorn to exit; safe from any thread."""
+        self._uvicorn.should_exit = True
+
+
 __all__: tuple[str, ...] = (
     "create_mcp_server",
+    "HttpServerHandle",
     "run_http",
     "run_stdio",
 )

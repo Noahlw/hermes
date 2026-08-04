@@ -265,8 +265,16 @@ class CronScheduler:
                     continue
             due = False
             if job.schedule is not None:
-                due = job.schedule.matches(now)
-            elif job.interval_minutes > 0:
+                # The tick loop fires every TICK_SECONDS, so a schedule
+                # stays "matching" for the whole minute it names; run a
+                # schedule job at most once per minute to avoid re-firing
+                # within the same minute (e.g. 06:00:00 and 06:00:30).
+                due = job.schedule.matches(now) and (
+                    job.last_run_at == 0.0 or (now_ts - job.last_run_at) >= 60.0
+                )
+            # Schedule OR interval — a job carrying both triggers fire
+            # independently (interval keeps firing between schedule slots).
+            if job.interval_minutes > 0:
                 elapsed_min = (now_ts - job.last_run_at) / 60.0
                 if job.last_run_at == 0.0 or elapsed_min >= job.interval_minutes:
                     due = True

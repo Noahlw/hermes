@@ -46,6 +46,11 @@ fail() { printf '[gateway.sh][FATAL] %s\n' "$*" >&2; exit 1; }
 log "preflight: repo root ${REPO_ROOT}"
 [[ -f "$REPO_ROOT/.env" ]] || fail ".env not found at repo root — copy .env.example to .env and fill REQUIRED keys (see INSTALL.md Step 1)"
 
+# Secrets live in the repo .env (systemd EnvironmentFile) — enforce 0600 so
+# other local users cannot read tokens (ADR 0004 amendment install contract).
+chmod 600 "$REPO_ROOT/.env"
+log "preflight: .env permissions hardened to 0600"
+
 missing=()
 for key in "${REQUIRED_KEYS[@]}"; do
     val="$(grep -E "^${key}=" "$REPO_ROOT/.env" | head -n1 | cut -d= -f2- || true)"
@@ -96,7 +101,7 @@ from pathlib import Path
 from hermes.profiles.config import DEFAULT_PROFILES_ROOT
 from hermes.profiles.provision import plan_provision
 
-root = Path(os.environ.get("PROFILES_ROOT", DEFAULT_PROFILES_ROOT))
+root = Path(os.path.expanduser(os.environ.get("PROFILES_ROOT") or DEFAULT_PROFILES_ROOT))
 plan = plan_provision(root=str(root))
 errs = plan.validate()
 if errs:
@@ -138,7 +143,17 @@ log "waiting for hermes-gateway to reach active (max 30 s)..."
 for _ in $(seq 1 30); do
     if systemctl is-active --quiet hermes-gateway; then
         log "hermes-gateway is active"
-        exit 0
+        # Active ≠ healthy: the unit can sit active while the bot fails to
+        # log in or the runtime cannot start. --check validates config,
+        # profiles, jobs and MCP tool registration; fail loudly otherwise.
+        env_pairs="$(grep -E '^[A-Z_][A-Z0-9_]*=' "$REPO_ROOT/.env" | xargs -d '\n')"
+        if sudo -u ubuntu env "$env_pairs" "$VENV/bin/python" -m hermes_agent --check \
+                >/tmp/hermes-gateway-check.log 2>&1; then
+            log "hermes_agent --check OK"
+            exit 0
+        fi
+        sudo systemctl status hermes-gateway --no-pager || true
+        fail "hermes_agent --check failed — see /tmp/hermes-gateway-check.log and 'journalctl -u hermes-gateway'"
     fi
     sleep 1
 done

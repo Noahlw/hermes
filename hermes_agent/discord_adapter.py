@@ -193,7 +193,7 @@ class PersonaBot:
 
     def _run_turn_sync(self, user_text: str, author_id: str) -> str:
         """Run a full Honcho-then-MiniMax-then-Honcho turn synchronously."""
-        self._memory.bind_user(author_id)
+        user_peer_id = self._memory.bind_user(author_id)
         self._memory.ensure_session()
         history = self._memory.recent_messages(limit=20)
 
@@ -205,10 +205,10 @@ class PersonaBot:
             content = row.get("content", "")
             if not content:
                 continue
-            if role not in {"system", "user", "assistant"}:
-                role = "user"
             if role == "ai":
                 role = "assistant"
+            elif role not in {"system", "user", "assistant"}:
+                role = "user"
             messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": user_text})
 
@@ -216,7 +216,7 @@ class PersonaBot:
         reply = raw.strip()
         # Persist the exchange to Honcho so the next turn has context.
         try:
-            self._memory.add_user(user_text)
+            self._memory.add_user(user_text, user_peer_id=user_peer_id)
             self._memory.add_ai(reply)
         except Exception:  # noqa: BLE001
             logger.exception(
@@ -321,6 +321,27 @@ class DiscordGateway:
             self._start_tasks.append(loop.create_task(bot.start(token)))
         if not self._start_tasks:
             raise RuntimeError("DiscordGateway: no bots started (all tokens empty)")
+
+    async def wait(self) -> None:
+        """Wait for any bot task to finish and surface its outcome.
+
+        ``bot.start(token)`` returns only when a bot disconnects or is
+        closed, and raises when login fails (bad/revoked token). Callers
+        (``main._run_multiplex``) race this against the stop event so a
+        dead bot tears the gateway down for systemd to restart — it
+        must never silently reduce the bot count.
+        """
+        if not self._start_tasks:
+            return
+        done, _pending = await asyncio.wait(
+            set(self._start_tasks), return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in done:
+            exc = task.exception()
+            if exc is not None:
+                raise RuntimeError(f"discord bot task failed: {exc}") from exc
+        # A bot disconnected cleanly — treat as gateway degradation too.
+        raise RuntimeError("a discord bot stopped unexpectedly")
 
     async def close(self) -> None:
         for task in self._start_tasks:

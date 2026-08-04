@@ -168,23 +168,28 @@ class PersonaMemory:
             self._session_id = sid if isinstance(sid, str) else self._session_name
         return self._session_id
 
-    def add_user(self, text: str) -> None:
+    def add_user(self, text: str, user_peer_id: str | None = None) -> None:
         """Append a Discord author message to the persona's session.
 
         The message is attributed to the per-persona+user peer id
-        registered by ``bind_user``; AI peer attribution is set by
-        ``add_ai``.
+        registered by ``bind_user`` (or the explicit ``user_peer_id``
+        passed by the caller); AI peer attribution is set by ``add_ai``.
+        Passing ``user_peer_id`` explicitly is required when turns run
+        concurrently (Discord bots multiplex users on one persona via
+        ``asyncio.to_thread``) so the shared instance attribute cannot
+        cross-attribute one author's message to another.
         """
         if not text:
             return
-        if not self._user_peer_id:
+        peer_id = user_peer_id or self._user_peer_id
+        if not peer_id:
             raise RuntimeError(
                 f"PersonaMemory({self._persona_id}).add_user called "
                 "before bind_user — caller must bind to a Discord author first"
             )
         session = self._ensure_session_obj()
         honcho = self._ensure_honcho()
-        user_peer = honcho.peer(self._user_peer_id)
+        user_peer = honcho.peer(peer_id)
         session.add_messages([user_peer.message(text)])
 
     def add_ai(self, text: str) -> None:

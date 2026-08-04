@@ -23,7 +23,7 @@ from hermes.profiles.provision import plan_provision
 from hermes_agent.config import GatewayConfig
 from hermes_agent.cron_scheduler import CronScheduler
 from hermes_agent.llm import MiniMaxClient
-from hermes_agent.mcp_server import run_http_sync, run_stdio_sync
+from hermes_agent.mcp_server import run_stdio_sync
 
 logger = logging.getLogger("hermes_agent")
 
@@ -197,18 +197,23 @@ async def _run_multiplex(config: GatewayConfig) -> None:
     # Each background runner is a long-lived task. ``stop_event``
     # cancels them all on SIGTERM/SIGINT.
     runners: list[asyncio.Task[Any]] = [
-        asyncio.create_task(_hold_until_stop(stop_event), name="discord-hold"),
+        asyncio.create_task(_hold_discord(gateway, stop_event), name="discord-hold"),
         asyncio.create_task(_watch_cron(cron, stop_event), name="cron-hold"),
         asyncio.create_task(_run_mcp_http(config, llm, stop_event), name="mcp-http"),
     ]
+    first_exc: BaseException | None = None
     try:
         done, _pending = await asyncio.wait(
             runners, return_when=asyncio.FIRST_COMPLETED,
         )
         stop_event.set()
         for task in done:
-            exc = task.exception()
-            if exc is not None:
+            try:
+                exc = task.exception()
+            except asyncio.CancelledError:
+                exc = None
+            if exc is not None and first_exc is None:
+                first_exc = exc
                 logger.exception("[gateway] background task crashed", exc_info=exc)
     finally:
         stop_event.set()
@@ -217,11 +222,39 @@ async def _run_multiplex(config: GatewayConfig) -> None:
             cron.stop(),
             return_exceptions=True,
         )
+    if first_exc is not None:
+        raise first_exc
 
 
-async def _hold_until_stop(stop_event: asyncio.Event) -> None:
-    """Discord bots block inside ``bot.start``; just wait for shutdown."""
-    await stop_event.wait()
+async def _hold_discord(
+    gateway: Any, stop_event: asyncio.Event,
+) -> None:
+    """Race the stop event against ``DiscordGateway.wait``.
+
+    On graceful shutdown the stop event wins and this returns quietly.
+    If a bot task finishes first (login failure, disconnect), the
+    gateway raises so the multiplex loop tears everything down and
+    systemd restarts the unit.
+    """
+    wait_task = asyncio.create_task(gateway.wait(), name="discord-wait")
+    stop_wait = asyncio.create_task(stop_event.wait(), name="stop-wait")
+    done, _pending = await asyncio.wait(
+        {wait_task, stop_wait}, return_when=asyncio.FIRST_COMPLETED,
+    )
+    if stop_wait in done:
+        wait_task.cancel()
+        try:
+            await wait_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+        return
+    try:
+        exc = wait_task.exception()
+    except asyncio.CancelledError:
+        return
+    if exc is not None:
+        raise exc
+    raise RuntimeError("a discord bot stopped unexpectedly")
 
 
 async def _watch_cron(cron: CronScheduler, stop_event: asyncio.Event) -> None:
@@ -245,20 +278,58 @@ async def _watch_cron(cron: CronScheduler, stop_event: asyncio.Event) -> None:
 async def _run_mcp_http(
     config: GatewayConfig, llm: MiniMaxClient, stop_event: asyncio.Event,
 ) -> None:
-    """Run MCP HTTP in a worker thread; cancel on stop_event."""
+    """Run MCP HTTP in a worker thread; stop it cleanly on stop_event.
+
+    The uvicorn server runs in the default executor; ``stop`` flips
+    uvicorn's ``should_exit`` so the thread joins instead of hanging
+    asyncio's executor shutdown (and holding the MCP port). If the
+    server exits on its own (e.g. bind failure), the failure is raised
+    so the multiplex loop tears everything down with a non-zero exit
+    and systemd restarts the unit.
+    """
+    from hermes_agent.mcp_server import HttpServerHandle
+
     loop = asyncio.get_running_loop()
-    http_task = loop.run_in_executor(None, run_http_sync, config, llm)
+    handle = HttpServerHandle(config, llm)
+    http_task = loop.run_in_executor(None, handle.serve)
     stop_wait = asyncio.create_task(stop_event.wait())
     done, _pending = await asyncio.wait(
         {http_task, stop_wait}, return_when=asyncio.FIRST_COMPLETED,
     )
-    if not http_task.done():
-        http_task.cancel()
-    for task in done:
+    if stop_wait in done:
+        handle.stop()
+        # uvicorn's serve loop checks ``should_exit`` between requests and
+        # exits promptly; join the thread so asyncio.run does not hang on
+        # executor shutdown (which would keep the MCP port held). Only if
+        # the server genuinely refuses to exit do we hard-exit: the default
+        # executor cannot be killed, and a hung unit is worse than a restart.
         try:
-            task.result()
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
-            pass
+            # Shield the join: on outer cancellation (SIGTERM), wait_for
+            # must not cancel the executor future — a cancelled wrapper
+            # reports done() while the thread is still running, which
+            # would let asyncio.run hang on executor shutdown.
+            await asyncio.wait_for(asyncio.shield(http_task), timeout=10.0)
+        except asyncio.TimeoutError:
+            logger.error(
+                "[gateway] mcp http server did not stop within 10s — hard exiting",
+            )
+            os._exit(1)
+        except asyncio.CancelledError:
+            # Process teardown (SIGTERM): skip the executor join that
+            # asyncio.run would perform — hard-exit instead of hanging.
+            if not http_task.done():
+                os._exit(0)
+            raise
+        return
+    # The HTTP server finished on its own — surface a bind/runtime
+    # failure instead of silently running without MCP.
+    try:
+        exc = http_task.exception()
+    except asyncio.CancelledError:
+        return
+    if exc is not None:
+        raise RuntimeError(f"mcp http server failed: {exc}") from exc
+    raise RuntimeError("mcp http server stopped unexpectedly")
 
 
 # -- arg parsing / entry ----------------------------------------------------
