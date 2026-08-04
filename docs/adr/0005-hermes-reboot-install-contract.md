@@ -29,3 +29,25 @@ Key facts from #79: the repo already scripts the deterministic 80% of provisioni
 - Prototype #77 is the first executor of this contract and the verifier of the unverified DR chain.
 - Anything in the acceptance that requires Ollama or `nomic-embed-text` locally is invalid until the embedding-provider decision lands.
 - If #78 chooses a non-disposable target, decision 2 (redo semantics) is revisited.
+
+## Prototype correction (#77, 2026-08-04)
+
+First execution of this contract on a fresh Ubuntu 24.04 aarch64 VM found the
+recorded chain unimplementable as written:
+
+- **Migrations were never applied by the chain.** `provision-hermes-postgres.sh`
+  creates roles/databases only, and `provision-indexer.sh`'s own `db/migrate.sh
+  codebase_index` call runs as `$USER` (no DDL rights on the owner-role DBs) and
+  soft-fails with `|| echo`. `install.sh` now applies `db/migrate.sh` as the
+  DB-owner roles (`hermes_app` / `codebase_index_app`) after provisioning, with a
+  one-time superuser `CREATE EXTENSION vector` (peer-auth unix socket) first.
+- **Smoke gate ran before the indexer provision.** Checks `f`–`l` target
+  `codebase_index` tables that only phase 4 created; the gate now runs after the
+  indexer provision. (In the original run, the cascade `FAIL:cdefghijkl` traced
+  to the missing schema — checks `g`/`h` showed `VALUES (, …)` from empty
+  capture vars after `f` failed.)
+- **Check `j` (Honcho `:5432`) is unsatisfiable by the scripted core.** Honcho is
+  out-of-repo (ADR 0004) and not installed by this contract; the gate ends at
+  `FAIL:j` until the Step 2 tail brings Honcho up. All other checks pass on the
+  bare scripted core. Open question: whether Honcho should join the scripted
+  core (then the gate is fully satisfiable) or remain tail-verified.
