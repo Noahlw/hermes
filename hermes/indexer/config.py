@@ -34,6 +34,10 @@ class IndexerConfig:
     mirrors_root: str = "~/.local/share/hermes-indexer/mirrors"
     webhook_secret: str = ""
     webhook_port: int = 8080
+    # The webhook binds loopback by default (zero public exposure, D3).
+    # Set to a Tailscale IP to receive GitHub callbacks over the tailnet,
+    # or leave 127.0.0.1 and rely on the reconcile timer for freshness.
+    webhook_host: str = "127.0.0.1"
     webhook_rate_limit: int = 60  # requests per minute
     reconcile_interval_minutes: int = 60
     inactive_days: int = 14
@@ -87,6 +91,7 @@ def load_config(path: str | Path) -> IndexerConfig:
         ).expanduser(),
         webhook_secret=raw.get("webhook_secret", ""),
         webhook_port=raw.get("webhook_port", IndexerConfig.webhook_port),
+        webhook_host=raw.get("webhook_host", IndexerConfig.webhook_host),
         webhook_rate_limit=raw.get(
             "webhook_rate_limit", IndexerConfig.webhook_rate_limit
         ),

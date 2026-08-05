@@ -7,7 +7,9 @@ name = "hermes"
 version = "0.1.0"
 description = "Hermes — codebase indexer, persona contracts, and discord agent plugin"
 readme = "README.md"
-requires-python = ">=3.12"
+# >=3.11: upstream hermes-agent ships its venv on 3.11 (installer pins
+# PYTHON_VERSION=3.11), and this repo is installed -e into that venv.
+requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "psycopg2-binary>=2.9",
