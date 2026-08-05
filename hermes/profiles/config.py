@@ -1,9 +1,14 @@
-"""Profile definitions and configuration generators for V1 persona profiles.
+"""Persona-to-profile roster and legacy provisioning templates.
 
-Each profile gets a distinct HERMES_HOME directory with persona-specific
-config.yaml, .env, honcho.json, and cron/jobs.json.  Discord-reachable
-profiles include DISCORD_BOT_TOKEN; MCP-invoked profiles do not enable
-the Discord adapter.
+The roster (persona_id - ProfileDefinition, Discord env names, home
+channel) is the single source of truth for persona-bot mapping.
+The provisioning helpers target the ARCHIVED private runtime's config
+shape ("adapters: discord ...", ``enable_cron``, own HERMES_HOME dirs)
+- ADR 0007 pivot: reference only. Upstream profiles are provisioned per
+AGENTS.md Step 2b (``hermes profile create`` + per-profile
+``~/.hermes/profiles/<name>/.env`` with ``DISCORD_BOT_TOKEN``); persona
+memory isolation comes from upstream Honcho host blocks, not per-dir
+HOME.
 """
 
 from __future__ import annotations

@@ -3,11 +3,11 @@
 #
 # Idempotent: safe to re-run at any point. Brings up Honcho v3.0.12 on the
 # shared Postgres 16 (:5433) as the third logical DB `honcho`, with systemd
-# units for the API (:8000) and Deriver, then provisions the five persona
-# workspaces/peers (setup/honcho-workspaces.py).
+# units for the API (:8000) and Deriver. Persona peers are created by the
+# upstream hermes clients on demand (honcho.json host blocks, AGENTS.md 2c).
 #
-# Prerequisites: Ubuntu 24.04, Postgres 16 on 127.0.0.1:5433 (installed by
-# setup/install.sh), passwordless sudo, uv on PATH.
+# Prerequisites: Ubuntu 24.04, Postgres 16 on 127.0.0.1:5433 (installed per
+# AGENTS.md Step 1), passwordless sudo, uv on PATH.
 #
 # Fixed install root /opt/honcho (D-A). Overrides: HONCHO_DB_PASSWORD
 # (generated if unset), HONCHO_BASE_URL (default http://127.0.0.1:8000).
@@ -33,7 +33,7 @@ if ! command -v uv >/dev/null 2>&1 && [ -x "$HOME/.local/bin/uv" ]; then
 fi
 command -v uv >/dev/null 2>&1 || fail "uv not found — install it (https://docs.astral.sh/uv/)"
 pg_isready -h 127.0.0.1 -p 5433 -q 2>/dev/null || \
-    fail "Postgres 16 not ready on 127.0.0.1:5433 — run setup/install.sh first"
+    fail "Postgres 16 not ready on 127.0.0.1:5433 — provision it first (AGENTS.md Step 1)"
 
 # ---------------------------------------------------------------------------
 # 1. Source checkout + venv (idempotent)
@@ -134,9 +134,7 @@ if ! systemctl is-active --quiet honcho-deriver; then
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Workspace/peer provisioning
+# 6. Peer/first-run priming
 # ---------------------------------------------------------------------------
-log "provisioning persona workspaces/peers via ${HONCHO_BASE_URL}..."
-python3 "$SCRIPT_DIR/honcho-workspaces.py" --base-url "$HONCHO_BASE_URL"
-
-log "done — honcho-api and honcho-deriver active; smoke gate j now satisfiable"
+log "done — honcho-api and honcho-deriver active"
+log "(persona peers auto-create on first upstream hermes use; no pre-provisioning)"

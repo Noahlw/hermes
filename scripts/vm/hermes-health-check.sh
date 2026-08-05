@@ -5,8 +5,8 @@
 # OK, 1 otherwise. Checks: Postgres :5433, Tailscale, Hermes systemd
 # units that exist, disk usage.
 #
-# Managed by hermes-agent InProcessCronScheduler via cron/jobs.json
-# (id: hermes-health-check, 0 6 * * *).
+# Scheduled per AGENTS.md Step 2f (upstream scheduling or systemd timer,
+# daily ~06:00; formerly InProcessCronScheduler cron/jobs.json, archived).
 
 set -u
 

@@ -29,9 +29,15 @@ class IndexerConfig:
     """Config loaded from a JSON file."""
 
     allowlist: tuple[AllowlistEntry, ...]
-    mirrors_root: str = "/home/ubuntu/.hermes/mirrors"
+    # XDG data dir: ~/.hermes is now the OFFICIAL hermes-agent home
+    # (ADR 0007) and must not hold private-indexer state.
+    mirrors_root: str = "~/.local/share/hermes-indexer/mirrors"
     webhook_secret: str = ""
     webhook_port: int = 8080
+    # The webhook binds loopback by default (zero public exposure, D3).
+    # Set to a Tailscale IP to receive GitHub callbacks over the tailnet,
+    # or leave 127.0.0.1 and rely on the reconcile timer for freshness.
+    webhook_host: str = "127.0.0.1"
     webhook_rate_limit: int = 60  # requests per minute
     reconcile_interval_minutes: int = 60
     inactive_days: int = 14
@@ -80,9 +86,12 @@ def load_config(path: str | Path) -> IndexerConfig:
     )
     cfg = IndexerConfig(
         allowlist=entries,
-        mirrors_root=raw.get("mirrors_root", IndexerConfig.mirrors_root),
+        mirrors_root=Path(
+            raw.get("mirrors_root", IndexerConfig.mirrors_root)
+        ).expanduser(),
         webhook_secret=raw.get("webhook_secret", ""),
         webhook_port=raw.get("webhook_port", IndexerConfig.webhook_port),
+        webhook_host=raw.get("webhook_host", IndexerConfig.webhook_host),
         webhook_rate_limit=raw.get(
             "webhook_rate_limit", IndexerConfig.webhook_rate_limit
         ),
@@ -110,5 +119,9 @@ def load_config(path: str | Path) -> IndexerConfig:
 
 
 def default_config_path() -> Path:
-    """Return the default config file location."""
-    return Path("/home/ubuntu/.hermes/indexer/config.json")
+    """Return the default config file location.
+
+    XDG config dir: ~/.hermes is the OFFICIAL hermes-agent home (ADR 0007)
+    and must stay free of private indexer state.
+    """
+    return Path("~/.config/hermes-indexer/config.json").expanduser()

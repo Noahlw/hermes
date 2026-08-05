@@ -43,19 +43,24 @@ log = logging.getLogger("indexer")
 
 
 def _run_webhook(config: IndexerConfig, args: list[str]) -> None:
-    """Start the webhook HTTP server."""
+    """Start the webhook HTTP server.
+
+    Binds to ``config.webhook_host`` (loopback by default — zero public
+    exposure, D3). Set ``webhook_host`` in config.json to a private/
+    Tailscale address to receive GitHub webhook callbacks; otherwise the
+    reconcile timer keeps the index fresh.
+    """
     import wsgiref.simple_server
 
     port = config.webhook_port
     app = make_webhook_app(config)
     server = wsgiref.simple_server.make_server(
-        host="0.0.0.0",
+        host=config.webhook_host,
         port=port,
         app=app,
     )
-    log.info("Starting webhook server on 0.0.0.0:%d", port)
+    log.info("Starting webhook server on %s:%d", config.webhook_host, port)
     server.serve_forever()
-
 
 
 def main() -> None:
