@@ -32,7 +32,9 @@ class MirrorState:
 
 
 def _mirror_root(config: IndexerConfig) -> Path:
-    return Path(config.mirrors_root)
+    # mirrors_root may be a literal ~/… path from config.json (ADR 0007
+    # XDG defaults) — Path() alone does not expand tilde.
+    return Path(config.mirrors_root).expanduser()
 
 
 def _repo_path(owner_name: str, config: IndexerConfig) -> Path:

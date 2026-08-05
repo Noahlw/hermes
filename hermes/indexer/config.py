@@ -82,7 +82,9 @@ def load_config(path: str | Path) -> IndexerConfig:
     )
     cfg = IndexerConfig(
         allowlist=entries,
-        mirrors_root=raw.get("mirrors_root", IndexerConfig.mirrors_root),
+        mirrors_root=Path(
+            raw.get("mirrors_root", IndexerConfig.mirrors_root)
+        ).expanduser(),
         webhook_secret=raw.get("webhook_secret", ""),
         webhook_port=raw.get("webhook_port", IndexerConfig.webhook_port),
         webhook_rate_limit=raw.get(
