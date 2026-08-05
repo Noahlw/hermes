@@ -29,7 +29,9 @@ class IndexerConfig:
     """Config loaded from a JSON file."""
 
     allowlist: tuple[AllowlistEntry, ...]
-    mirrors_root: str = "/home/ubuntu/.hermes/mirrors"
+    # XDG data dir: ~/.hermes is now the OFFICIAL hermes-agent home
+    # (ADR 0007) and must not hold private-indexer state.
+    mirrors_root: str = "~/.local/share/hermes-indexer/mirrors"
     webhook_secret: str = ""
     webhook_port: int = 8080
     webhook_rate_limit: int = 60  # requests per minute
@@ -110,5 +112,9 @@ def load_config(path: str | Path) -> IndexerConfig:
 
 
 def default_config_path() -> Path:
-    """Return the default config file location."""
-    return Path("/home/ubuntu/.hermes/indexer/config.json")
+    """Return the default config file location.
+
+    XDG config dir: ~/.hermes is the OFFICIAL hermes-agent home (ADR 0007)
+    and must stay free of private indexer state.
+    """
+    return Path("~/.config/hermes-indexer/config.json").expanduser()

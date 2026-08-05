@@ -2,9 +2,10 @@
 # Provision the codebase indexer on the Hermes VM.
 set -euo pipefail
 
-HERMES_HOME="${HERMES_HOME:-/home/ubuntu/.hermes}"
-INDEXER_HOME="${HERMES_HOME}/indexer"
-MIRRORS_ROOT="${HERMES_HOME}/mirrors"
+# XDG defaults (ADR 0007): ~/.hermes belongs to the OFFICIAL hermes-agent.
+INDEXER_HOME="${INDEXER_HOME:-$HOME/.local/share/hermes-indexer}"
+MIRRORS_ROOT="${MIRRORS_ROOT:-$HOME/.local/share/hermes-indexer/mirrors}"
+INDEXER_CONFIG="${INDEXER_CONFIG:-$HOME/.config/hermes-indexer/config.json}"
 PYTHON="${PYTHON:-python3}"
 
 echo "[indexer] Installing system dependencies..."
@@ -31,11 +32,12 @@ else
 fi
 
 echo "[indexer] Creating default config..."
-if [ ! -f "${INDEXER_HOME}/config.json" ]; then
-    cat > "${INDEXER_HOME}/config.json" << 'CONFIG'
+mkdir -p "$(dirname "${INDEXER_CONFIG}")"
+if [ ! -f "${INDEXER_CONFIG}" ]; then
+    cat > "${INDEXER_CONFIG}" << CONFIG
 {
     "allowlist": [],
-    "mirrors_root": "/home/ubuntu/.hermes/mirrors",
+    "mirrors_root": "$MIRRORS_ROOT",
     "webhook_port": 8080,
     "webhook_rate_limit": 60,
     "reconcile_interval_minutes": 60,
@@ -53,38 +55,38 @@ if [ ! -f "${INDEXER_HOME}/config.json" ]; then
     ]
 }
 CONFIG
-    echo "[indexer] Created default config at ${INDEXER_HOME}/config.json"
+    echo "[indexer] Created default config at ${INDEXER_CONFIG}"
 fi
 
 echo "[indexer] Creating systemd service for webhook..."
-sudo tee /etc/systemd/system/hermes-indexer-webhook.service > /dev/null << 'SERVICE'
+sudo tee /etc/systemd/system/hermes-indexer-webhook.service > /dev/null << SERVICE
 [Unit]
 Description=Hermes Codebase Indexer Webhook
-After=network.target postgresql@14-main.service
+After=network.target postgresql.service
 
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/.hermes/indexer
-ExecStart=/home/ubuntu/.hermes/indexer/venv/bin/python -m hermes.indexer webhook
+WorkingDirectory=$INDEXER_HOME
+ExecStart=$INDEXER_HOME/venv/bin/python -m hermes.indexer webhook
 Restart=on-failure
 RestartSec=10
-Environment=INDEXER_CONFIG=/home/ubuntu/.hermes/indexer/config.json
+Environment=INDEXER_CONFIG=$INDEXER_CONFIG
 
 [Install]
 WantedBy=multi-user.target
 SERVICE
 
 echo "[indexer] Creating systemd timer for reconcile..."
-sudo tee /etc/systemd/system/hermes-indexer-reconcile.service > /dev/null << 'SERVICE'
+sudo tee /etc/systemd/system/hermes-indexer-reconcile.service > /dev/null << SERVICE
 [Unit]
 Description=Hermes Codebase Indexer Reconcile
 
 [Service]
 Type=oneshot
 User=ubuntu
-ExecStart=/home/ubuntu/.hermes/indexer/venv/bin/python -m hermes.indexer reconcile --once
-Environment=INDEXER_CONFIG=/home/ubuntu/.hermes/indexer/config.json
+ExecStart=$INDEXER_HOME/venv/bin/python -m hermes.indexer reconcile --once
+Environment=INDEXER_CONFIG=$INDEXER_CONFIG
 SERVICE
 
 sudo tee /etc/systemd/system/hermes-indexer-reconcile.timer > /dev/null << 'TIMER'
@@ -107,7 +109,7 @@ fi
 
 echo "[indexer] Provisioning complete."
 echo ""
-echo "  Config:       ${INDEXER_HOME}/config.json"
+echo "  Config:       ${INDEXER_CONFIG}"
 echo "  Mirrors:      ${MIRRORS_ROOT}"
 echo "  Webhook:      systemctl start hermes-indexer-webhook"
 echo "  Reconcile:    systemctl start hermes-indexer-reconcile.timer"

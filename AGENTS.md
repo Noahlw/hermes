@@ -72,8 +72,19 @@ What the official installer does (source-verified, v0.20.x):
   `hermes config set`, then `hermes doctor` confirms.
 
 Verification: `hermes --version` and `hermes doctor` exist and run.
-Note: `~/.hermes` is upstream's home. The indexer's old config at
-`~/.hermes/indexer/` (pre-pivot) must be relocated — see Step 3.
+Note: `~/.hermes` is upstream's home. On a **fresh machine** the default
+home is correct. On **this VM** (staged swap) `~/.hermes` already holds
+live private-stack state (indexer config + mirrors, five per-persona
+profile dirs) — install upstream into a separate home so the installer
+never touches the running private stack:
+
+```bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- \
+  --hermes-home ~/.hermes-official
+```
+
+`~/.hermes-official` is upstream's home on this VM until Step 5 frees
+`~/.hermes` of private state.
 
 ## Step 2 — Configure the runtime
 
@@ -235,13 +246,26 @@ ships (check `hermes cron` / config `schedules:`; docs
 **systemd timer** on the VM (the backup + keep-alive timers already exist and
 are kept — Q7).
 
-## Step 3 — Relocate leftover private-stack state
+## Step 3 — Relocate leftover private-stack state out of `~/.hermes`
 
-- `~/.hermes/indexer/config.json` (pre-pivot indexer config) → move to a
-  non-`~/.hermes` path, e.g. `~/.config/hermes-indexer/config.json`, and
-  point the indexer service at it. `~/.hermes` now belongs to upstream.
-- `/opt/hermes-gateway` (old venv) and `/home/ubuntu/hermes` (repo checkout)
-  stay until Step 5; do not touch.
+The indexer's XDG defaults (ADR 0007; `hermes/indexer/config.py`) are
+`~/.config/hermes-indexer/config.json` and
+`~/.local/share/hermes-indexer/mirrors` — never under `~/.hermes`. Move the
+VM's pre-pivot state there and re-point the indexer service:
+
+```bash
+mkdir -p ~/.config/hermes-indexer ~/.local/share/hermes-indexer
+mv ~/.hermes/indexer/config.json ~/.config/hermes-indexer/config.json
+mv ~/.hermes/mirrors ~/.local/share/hermes-indexer/mirrors
+# edit config.json: mirrors_root -> ~/.local/share/hermes-indexer/mirrors
+# point the indexer systemd unit at the moved config (INDEXER_CONFIG) and
+# restart only hermes-indexer.
+```
+
+`/opt/hermes-gateway` (old venv) and `/home/ubuntu/hermes` (repo checkout)
+stay until Step 5; do not touch. The private gateway keeps reading its own
+state from `~/.hermes/profiles/` until Step 5 — do not move those dirs
+while it runs.
 
 ## Step 4 — Verification gate (all 7 must pass)
 
@@ -267,7 +291,10 @@ Only when all 7 pass, proceed to Step 5.
    the minimum).
 2. `systemctl disable --now hermes-gateway` and the private cron scheduler.
 3. Drop the gateway DB **only with operator approval** (destructive op).
-4. Keep: honcho-api, honcho-deriver, ollama, codebase index, indexer MCP,
+4. Archive the private per-persona HOME dirs now that nothing reads them:
+   `mv ~/.hermes/profiles ~/.hermes/profiles.private-2026-08-05` (upstream
+   owns `~/.hermes/profiles/` for `hermes profile create`).
+5. Keep: honcho-api, honcho-deriver, ollama, codebase index, indexer MCP,
    systemd timers.
 
 ---
