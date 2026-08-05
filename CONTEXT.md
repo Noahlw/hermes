@@ -22,19 +22,22 @@ _Avoid_: five Discord bots in V1; intent-classifier routing on a single bot; Dis
 ## Contract gate integration
 
 This repo's `hermes/personas/` package (contract gate + adapters) is a
-dependency-free policy layer imported by this repo's own runtime,
-`hermes_agent/`, which is the V1 gateway (D-B fork 2, ADR 0004 amendment
-2026-08-04 — the external hermes-agent gateway was lost with the old VM;
-the "not a replacement runtime" stance is superseded). `hermes_agent`'s
-Discord and MCP handlers call `route_discord_message()` /
-`route_mcp_tool()` before dispatching, then run the approved action
-against MiniMax-M3, Honcho, and the codebase index. The policy module is
-validated against the runtime's message/tool shapes by the VM smoke gate
-(map #76 Task 5 acceptance: gateway up + enabled, three bots answer
-@-mention).
-_Avoid_: running a second Discord listener process alongside
-`hermes-gateway.service`; treating the policy module as
-production-validated before the VM smoke gate passes
+dependency-free policy layer consumed by the official Hermes Agent
+(NousResearch/hermes-agent, ADR 0007 — the private `hermes_agent/` runtime
+is archived under `archive/`). The official runtime is installed the
+official way and runs three profiles — default (Main Agent), `assistant`,
+`tutor` — each with its own Discord bot and Honcho host block. The policy
+module is wired into upstream's `pre_gateway_dispatch` hook via
+`hermes/hermes_agent_plugin/` (installed as `~/.hermes/plugins/noahlw/`),
+which calls `route_discord_message()` / `route_mcp_tool()` before dispatch
+and returns the hook's action dicts (`skip`/`allow`). Language- and
+MCP-handling now belong to the official runtime; this repo only gates.
+The policy module is validated against the runtime's message/tool shapes by
+the VM 7-check gate (AGENTS.md Step 4: three bots answer @-mention,
+`library_search` returns citations, Honcho memory lands).
+_Avoid_: running the archived private gateway as a second listener;
+treating the policy module as production-validated before the 7-check gate
+passes
 
 ## confirm_delete UX (deferred — design captured, not implemented)
 
@@ -196,20 +199,20 @@ _Avoid_: stuffing news corpora into Honcho as a wiki; treating PopIdea (#46) as 
 On-VM model serving used for embeddings or generation (today: Ollama). Distinct from the memory stack.
 _Reboot (D-C, 2026-08-04):_ the target (Oracle Cloud free tier, 2 CPU / 12 GB RAM) runs Ollama for **embedding-class** models only — `nomic-embed-text` (137M params) benchmarks at ~1 s/chunk, 768-dim, ~40 MB RSS. LLM-class models stay remote (MiniMax-M3, D-D); the earlier "Ollama cannot run" premise (ADR 0005/0006) applied to 7B-class sizes. Ollama serves `127.0.0.1:11434` only (zero public exposure).
 
-## Install contract (reboot)
+## Install contract (ADRs 0005 → 0007)
 
-The settled way Hermes gets installed from this repo (ADR 0005, ticket #80): a thin `setup/install.sh` chains the existing deterministic scripts (Postgres provision → smoke gate → indexer → restore-if-backup → final smoke), and a top-level `INSTALL.md` runbook carries the unscripted tail (Tailscale up, `.env` creation, gateway bring-up, profile apply, cron registration). A coding agent runs the script, then follows the runbook. Redo = re-clone/re-run from the top; the bootstrap halts on the first failing smoke.
-_Avoid_: Docker Compose as the install mechanism; idempotency machinery; requiring a Drive restore on the happy path
+The settled way Hermes gets installed from this repo (**ADR 0007 pivot**, 2026-08-05): the **official Hermes Agent** (NousResearch/hermes-agent) is installed the official way (`curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`), and this repo is the agent-readable playbook + extension layer (`AGENTS.md`, auto-loaded by coding agents). The coding agent reads `AGENTS.md` and implements it step by step: reach the official repo → official install → provider/profile/Honcho/indexer/config → extensions → gate. ADR 0005's `setup/install.sh` chain is superseded (archived); its surviving memory-infra artifacts (`setup/ollama/`, `setup/honcho/`) and D3 zero-public-exposure posture carry over.
+_Avoid_: Docker Compose as the install mechanism; wrapping the official installer in a curl|bash; treating ADR 0005's script chain as current
 
 ## Fresh install (zero-data)
 
 The reboot starts with no durable state: the old VM is deleted and the Drive backup was never built. Secrets come from a committed `.env.example` template: the installer copies it to `.env`, validates every required key, and fails fast listing what is missing. The age-key/Drive backup-restore chain is retained as scripted DR only and is **unverified** (never executed end-to-end; prototype #77 dry-runs it).
 _Avoid_: treating the restore chain as a tested path; committing real tokens; requiring an age key for a first install
 
-## Install acceptance (reboot)
+## Install acceptance (7-check gate, ADR 0007)
 
-The definition of "working Hermes" after install (ADR 0005): `smoke-hermes-postgres.sh` passes (Hermes DB + codebase-index DB on `:5433`, pgvector); gateway service up and systemd-enabled; Assistant, Tutor, and Main Agent Discord bots answer an @-mention; cron jobs registered; indexer completes a first sync; `library_search` returns the MCP envelope; `.env` validation clean. Ollama embeddings (D-C) are part of the stack: `nomic-embed-text` on `127.0.0.1:11434`, Honcho embedding config pointed at it.
-_Avoid_: treating an empty index or a silent gateway as success; blocking install on an LLM-class local model
+The definition of "working Hermes" (ADR 0007 Q8): (1) `hermes doctor` clean; (2) MiniMax-M3 answers a chat prompt; (3) all three upstream profiles (Main Agent, Assistant, Tutor) reply to an @-mention; (4) `library_search` returns results with citations; (5) Honcho memory lands from a chat; (6) the daily digest fires; (7) `ss -ltn` shows no public listeners. The private stack is decommissioned only after all seven pass. Ollama embeddings (D-C, `nomic-embed-text` on `127.0.0.1:11434`) stay part of the stack.
+_Avoid_: treating an empty index or a silent gateway as success; decommissioning before the gate passes; public network exposure
 
 ## Target environment (reboot)
 

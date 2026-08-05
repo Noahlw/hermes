@@ -2,13 +2,12 @@
 # Wayfinder #47 — Hermes Postgres migration runner.
 #
 # Usage:
-#   ./migrate.sh hermes|codebase_index|all
+#   ./migrate.sh codebase_index
 #
 # Reads per-DB connection info from env:
 #   HERMES_PGHOST (default 127.0.0.1)
 #   HERMES_PGPORT (default 5433)
 #   HERMES_PGUSER (default $USER, fallback "postgres")
-#   HERMES_PGDB_HERMES          (default "hermes")
 #   HERMES_PGDB_CODEBASE_INDEX  (default "codebase_index")
 #
 # This script is idempotent: each migration tracks its version in
@@ -17,7 +16,7 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 hermes|codebase_index|all" >&2
+    echo "usage: $0 codebase_index" >&2
     exit 2
 }
 
@@ -28,7 +27,6 @@ target="$1"
 HOST="${HERMES_PGHOST:-127.0.0.1}"
 PORT="${HERMES_PGPORT:-5433}"
 USER="${HERMES_PGUSER:-${USER:-postgres}}"
-DB_HERMES="${HERMES_PGDB_HERMES:-hermes}"
 DB_INDEX="${HERMES_PGDB_CODEBASE_INDEX:-codebase_index}"
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -75,15 +73,7 @@ run_db() {
 }
 
 case "$target" in
-    hermes)
-        run_db "$DB_HERMES" hermes
-        ;;
     codebase_index)
-        run_db "$DB_INDEX" codebase_index
-        ;;
-    all)
-        run_db "$DB_HERMES" hermes
-        echo
         run_db "$DB_INDEX" codebase_index
         ;;
     *)
